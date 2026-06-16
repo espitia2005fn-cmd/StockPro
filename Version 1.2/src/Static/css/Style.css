@@ -640,6 +640,29 @@ body, p, .product-code, .text-muted, small, .stock-good, .stock-low {
         font-size: 11px;
         padding: 6px 10px;
     }
+
+    .dropdown-menu[style*="min-width:480px"] {
+        min-width: 100% !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .product-card {
+        margin-bottom: 16px;
+    }
+    .product-img {
+        height: 160px;
+    }
+    .product-name {
+        font-size: 13px;
+    }
+    .product-price {
+        font-size: 16px !important;
+    }
+    .btn-detail, .btn-cart {
+        font-size: 10px;
+        padding: 5px 8px;
+    }
 }
 
 /* ========== SCROLLBAR INVISIBLE ========== */

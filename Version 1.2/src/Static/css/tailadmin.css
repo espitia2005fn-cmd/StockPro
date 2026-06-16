@@ -94,6 +94,7 @@ body {
   margin: 0;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
 
 a { text-decoration: none; color: inherit; }
@@ -1142,9 +1143,36 @@ hr { border: none; border-top: 1px solid var(--gray-200); margin: 16px 0; }
   .header-search { display: none; }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
+  .col-4, .col-6, .col-3,
+  .col-md-2, .col-md-3, .col-md-4, .col-md-6, .col-md-8,
+  .col-lg-3, .col-lg-4,
+  .col-xl-3, .col-xl-4, .col-xl-5, .col-xl-7, .col-xl-8 {
+    width: 100%;
+  }
+  .col.col-md-6.col-lg-4,
+  .col-12.col-md-6.col-lg-4 {
+    width: 100%;
+  }
+  .row {
+    flex-direction: column;
+  }
   .page-content { padding: 16px; }
   .header { padding: 8px 16px; }
   .header-title { font-size: 16px; }
   .stat-value { font-size: 24px; }
+  .stat-card { padding: 16px; }
+  .card-body { padding: 16px; }
+  .table-wrapper { overflow-x: auto; }
+}
+
+@media (max-width: 480px) {
+  .page-content { padding: 12px; }
+  .header { padding: 6px 12px; }
+  .header-title { font-size: 15px; }
+  .header-hamburger { width: 36px; height: 36px; }
+  .stat-value { font-size: 20px; }
+  .stat-icon { width: 40px; height: 40px; }
+  .card-body { padding: 12px; }
+  .d-flex.gap-3.flex-wrap { flex-direction: column; }
 }
