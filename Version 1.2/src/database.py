@@ -1,19 +1,10 @@
-import sqlite3
 from datetime import datetime
 import hashlib
 import bcrypt
-import os
-
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'stockpro.db')
+from .db_adapter import get_connection
 
 def obtener_conexion():
-    if os.environ.get('DATABASE_URL', '').startswith('postgresql'):
-        from .db_adapter import get_connection
-        return get_connection()
-    conn = sqlite3.connect(DB_PATH, timeout=10)
-    conn.execute("PRAGMA foreign_keys = ON")
-    conn.row_factory = sqlite3.Row
-    return conn
+    return get_connection()
 
 def hash_password(password):
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
@@ -86,23 +77,23 @@ def crear_tablas():
     # Migración segura para bases existentes
     try:
         cursor.execute("ALTER TABLE usuarios ADD COLUMN telefono TEXT")
-    except sqlite3.OperationalError:
+    except Exception:
         pass
     try:
         cursor.execute("ALTER TABLE usuarios ADD COLUMN direccion TEXT")
-    except sqlite3.OperationalError:
+    except Exception:
         pass
     try:
         cursor.execute("ALTER TABLE usuarios ADD COLUMN foto_perfil TEXT DEFAULT ''")
-    except sqlite3.OperationalError:
+    except Exception:
         pass
     try:
         cursor.execute("ALTER TABLE usuarios ADD COLUMN ultimo_acceso TIMESTAMP")
-    except sqlite3.OperationalError:
+    except Exception:
         pass
     try:
         cursor.execute("ALTER TABLE repuestos ADD COLUMN costo REAL DEFAULT 0")
-    except sqlite3.OperationalError:
+    except Exception:
         pass
     
     # Tabla ventas (sistema anterior)
@@ -238,7 +229,7 @@ def crear_tablas():
     # Migración: agregar columna imagen si no existe
     try:
         cursor.execute("ALTER TABLE categorias ADD COLUMN imagen TEXT DEFAULT ''")
-    except sqlite3.OperationalError:
+    except Exception:
         pass  # ya existe
     
     # Crear usuario admin por defecto si no existe
@@ -300,7 +291,7 @@ def crear_tablas():
     # Agregar columna permisos a usuarios si no existe
     try:
         cursor.execute("ALTER TABLE usuarios ADD COLUMN permisos TEXT DEFAULT '{}'")
-    except sqlite3.OperationalError:
+    except Exception:
         pass
 
     conn.commit()
