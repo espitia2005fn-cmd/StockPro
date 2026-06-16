@@ -1,0 +1,412 @@
+{% extends "base_admin.html" %}
+
+{% block titulo %}Registrar Producto{% endblock %}
+
+{% block extra_css %}
+<style>
+.steps {
+    display: flex;
+    justify-content: center;
+    gap: 0;
+    margin-bottom: 24px;
+}
+.step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: var(--gray-100);
+    border: 2px solid var(--gray-200);
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--gray-400);
+    cursor: pointer;
+    transition: var(--transition);
+    position: relative;
+}
+.step:first-child { border-radius: 50px 0 0 50px; }
+.step:last-child { border-radius: 0 50px 50px 0; }
+.step:not(:last-child)::after {
+    content: '';
+    position: absolute; right: -12px; top: 50%;
+    transform: translateY(-50%);
+    width: 0; height: 0;
+    border-style: solid;
+    border-width: 18px 0 18px 12px;
+    border-color: transparent transparent transparent var(--gray-100);
+    z-index: 2;
+}
+.step:not(:last-child)::before {
+    content: '';
+    position: absolute; right: -14px; top: 50%;
+    transform: translateY(-50%);
+    width: 0; height: 0;
+    border-style: solid;
+    border-width: 20px 0 20px 14px;
+    border-color: transparent transparent transparent var(--gray-200);
+    z-index: 1;
+}
+.step.active {
+    background: var(--brand-500);
+    border-color: var(--brand-500);
+    color: white;
+}
+.step.active:not(:last-child)::after { border-color: transparent transparent transparent var(--brand-500); }
+.step.active:not(:last-child)::before { border-color: transparent transparent transparent var(--brand-500); }
+.step.completed {
+    background: var(--success-500);
+    border-color: var(--success-500);
+    color: white;
+}
+.step.completed:not(:last-child)::after { border-color: transparent transparent transparent var(--success-500); }
+.step.completed:not(:last-child)::before { border-color: transparent transparent transparent var(--success-500); }
+.step .step-num {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+}
+.step-panel { display: none; }
+.step-panel.active { display: block; }
+.preview-box {
+    background: var(--gray-50);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+}
+.preview-box dt {
+    font-size: 11px;
+    color: var(--gray-400);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 12px;
+    font-weight: 600;
+}
+.preview-box dt:first-child { margin-top: 0; }
+.preview-box dd {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--gray-800);
+    margin-bottom: 0;
+}
+.image-zone {
+    border: 3px dashed var(--gray-300);
+    border-radius: var(--radius-lg);
+    padding: 40px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: var(--transition);
+    background: var(--gray-50);
+}
+.image-zone:hover, .image-zone.dragover {
+    border-color: var(--brand-500);
+    background: var(--brand-25);
+}
+.image-zone.has-image {
+    border-color: var(--success-500);
+    padding: 20px;
+}
+.image-zone img {
+    max-height: 160px;
+    border-radius: var(--radius-md);
+    object-fit: contain;
+}
+.char-count {
+    font-size: 12px;
+    color: var(--gray-400);
+    text-align: right;
+    margin-top: 2px;
+}
+.validation-feedback { font-size: 12px; margin-top: 2px; }
+.form-control.is-invalid { border-color: var(--error-500); }
+.form-control.is-valid { border-color: var(--success-500); }
+.form-select.is-invalid { border-color: var(--error-500); }
+.form-select.is-valid { border-color: var(--success-500); }
+</style>
+{% endblock %}
+
+{% block contenido %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
+    <p class="page-subtitle">Registrar un nuevo repuesto en el inventario</p>
+    <a href="/admin/productos" class="btn btn-secondary btn-sm"><i class="bi bi-arrow-left"></i> Volver</a>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+            <div class="alert alert-{{ 'error' if category == 'error' else 'success' }} mb-4">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
+<div class="steps" id="stepsIndicator">
+    <div class="step active" data-step="1">
+        <span class="step-num">1</span>
+        <span>Informaci&oacute;n B&aacute;sica</span>
+    </div>
+    <div class="step" data-step="2">
+        <span class="step-num">2</span>
+        <span>Detalles del Producto</span>
+    </div>
+    <div class="step" data-step="3">
+        <span class="step-num">3</span>
+        <span>Imagen &amp; Revisar</span>
+    </div>
+</div>
+
+<form method="POST" action="/api/guardar" enctype="multipart/form-data" id="registroForm" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <!-- STEP 1 -->
+    <div class="step-panel active" data-step="1">
+        <div class="card">
+            <div class="card-header"><h5 class="card-title mb-0"><i class="bi bi-info-circle me-2"></i>Informaci&oacute;n B&aacute;sica</h5></div>
+            <div class="card-body">
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <label class="form-label">C&oacute;digo *</label>
+                        <input type="text" name="codigo" class="form-control" required placeholder="Ej: MOT-001" id="field-codigo">
+                        <div class="validation-feedback" id="feedback-codigo"></div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Nombre del Producto *</label>
+                        <input type="text" name="nombre" class="form-control" required placeholder="Nombre del repuesto" id="field-nombre">
+                        <div class="validation-feedback" id="feedback-nombre"></div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Categor&iacute;a *</label>
+                        <select name="categoria" class="form-select" required id="field-categoria">
+                            <option value="">Seleccionar categor&iacute;a...</option>
+                            {% for c in categorias %}
+                            <option value="{{ c.nombre }}">{{ c.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Precio Unitario *</label>
+                        <div class="input-group"><span class="input-group-text">$</span><input type="number" step="0.01" name="precio" class="form-control" required placeholder="0.00" id="field-precio"></div>
+                        <div class="validation-feedback" id="feedback-precio"></div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Costo Unitario</label>
+                        <div class="input-group"><span class="input-group-text">$</span><input type="number" step="0.01" name="costo" class="form-control" value="0" placeholder="Precio de compra" id="field-costo"></div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Cantidad Inicial</label>
+                        <input type="number" name="cantidad" class="form-control" value="0" id="field-cantidad">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Stock M&iacute;nimo</label>
+                        <input type="number" name="stock_minimo" class="form-control" value="5" id="field-stock-minimo">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Proveedor</label>
+                        <input type="text" name="proveedor" class="form-control" placeholder="Nombre del proveedor" id="field-proveedor">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Ubicaci&oacute;n en almac&eacute;n</label>
+                        <input type="text" name="ubicacion" class="form-control" placeholder="Estante, zona, pasillo..." id="field-ubicacion">
+                    </div>
+                </div>
+                <div class="d-flex justify-content-end mt-4">
+                    <button type="button" class="btn btn-primary" onclick="nextStep(1)">Siguiente <i class="bi bi-arrow-right ms-1"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- STEP 2 -->
+    <div class="step-panel" data-step="2">
+        <div class="card">
+            <div class="card-header"><h5 class="card-title mb-0"><i class="bi bi-file-text me-2"></i>Detalles del Producto</h5></div>
+            <div class="card-body">
+                <div class="row g-4">
+                    <div class="col-12">
+                        <label class="form-label">Descripci&oacute;n</label>
+                        <textarea name="descripcion" class="form-control" rows="3" placeholder="Descripci&oacute;n general del producto..." id="field-descripcion" maxlength="500"></textarea>
+                        <div class="char-count"><span id="descripcion-count">0</span>/500</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Caracter&iacute;sticas</label>
+                        <textarea name="caracteristicas" class="form-control" rows="4" placeholder="Una por l&iacute;nea&#10;Ej:&#10;Material de alta resistencia&#10;Compatible con modelos 2020+&#10;Color negro" id="field-caracteristicas"></textarea>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Especificaciones T&eacute;cnicas</label>
+                        <textarea name="especificaciones" class="form-control" rows="4" placeholder="Ej:&#10;Peso: 0.5 kg&#10;Material: Acero inoxidable&#10;Medidas: 15x10x5 cm" id="field-especificaciones"></textarea>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Garant&iacute;a</label>
+                        <input type="text" name="garantia" class="form-control" placeholder="Ej: 6 meses, 1 a&ntilde;o" id="field-garantia">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Peso</label>
+                        <input type="text" name="peso" class="form-control" placeholder="Ej: 0.5 kg" id="field-peso">
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between mt-4">
+                    <button type="button" class="btn btn-secondary" onclick="prevStep(2)"><i class="bi bi-arrow-left me-1"></i> Anterior</button>
+                    <button type="button" class="btn btn-primary" onclick="nextStep(2)">Siguiente <i class="bi bi-arrow-right ms-1"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- STEP 3 -->
+    <div class="step-panel" data-step="3">
+        <div class="card">
+            <div class="card-header"><h5 class="card-title mb-0"><i class="bi bi-image me-2"></i>Imagen &amp; Revisar</h5></div>
+            <div class="card-body">
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <label class="form-label">Imagen del Producto</label>
+                        <div class="image-zone" id="dropzone" onclick="document.getElementById('fileInput').click()">
+                            <div id="dropzone-content">
+                                <i class="bi bi-cloud-arrow-up fs-1 text-muted"></i>
+                                <p class="mt-2 mb-1 fw-semibold">Arrastra la imagen aqu&iacute;</p>
+                                <p class="text-muted small mb-0">o haz clic para seleccionar</p>
+                                <p class="text-muted small">JPG / PNG m&aacute;x 5MB</p>
+                            </div>
+                            <div id="dropzone-preview" style="display:none;">
+                                <img id="preview-img" src="" alt="Vista previa">
+                                <p class="mt-2 small text-muted">Haz clic para cambiar</p>
+                            </div>
+                        </div>
+                        <input type="file" name="imagen" id="fileInput" class="d-none" accept="image/*">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Resumen del Producto</label>
+                        <div class="preview-box" id="formPreview">
+                            <dl class="mb-0">
+                                <dt>C&oacute;digo</dt><dd id="preview-codigo">-</dd>
+                                <dt>Nombre</dt><dd id="preview-nombre">-</dd>
+                                <dt>Categor&iacute;a</dt><dd id="preview-categoria">-</dd>
+                                <dt>Precio</dt><dd id="preview-precio">-</dd>
+                                <dt>Stock</dt><dd id="preview-stock">-</dd>
+                                <dt>Proveedor</dt><dd id="preview-proveedor">-</dd>
+                                <dt>Ubicaci&oacute;n</dt><dd id="preview-ubicacion">-</dd>
+                                <dt>Garant&iacute;a</dt><dd id="preview-garantia">-</dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between mt-4">
+                    <button type="button" class="btn btn-secondary" onclick="prevStep(3)"><i class="bi bi-arrow-left me-1"></i> Anterior</button>
+                    <button type="submit" class="btn btn-primary px-5"><i class="bi bi-check-circle"></i> Guardar Producto</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentStep = 1;
+const totalSteps = 3;
+
+function updateSteps(step) {
+    for (let i = 1; i <= totalSteps; i++) {
+        const el = document.querySelector(`.step[data-step="${i}"]`);
+        const panel = document.querySelector(`.step-panel[data-step="${i}"]`);
+        el.classList.remove('active', 'completed');
+        panel.classList.remove('active');
+        if (i < step) { el.classList.add('completed'); }
+        else if (i === step) { el.classList.add('active'); panel.classList.add('active'); }
+    }
+}
+
+function validateStep1() {
+    let valid = true;
+    [   { id: 'codigo', label: 'Codigo' },
+        { id: 'nombre', label: 'Nombre' },
+        { id: 'precio', label: 'Precio' }
+    ].forEach(function(f) {
+        const el = document.getElementById('field-' + f.id);
+        const fb = document.getElementById('feedback-' + f.id);
+        if (!el.value.trim()) {
+            el.classList.add('is-invalid'); el.classList.remove('is-valid');
+            fb.innerHTML = '<small class="text-danger">' + f.label + ' es obligatorio</small>';
+            valid = false;
+        } else {
+            el.classList.remove('is-invalid'); el.classList.add('is-valid');
+            fb.innerHTML = '<small class="text-success">Correcto</small>';
+        }
+    });
+    const cat = document.getElementById('field-categoria');
+    if (!cat.value) { cat.classList.add('is-invalid'); cat.classList.remove('is-valid'); valid = false; }
+    else { cat.classList.remove('is-invalid'); cat.classList.add('is-valid'); }
+    return valid;
+}
+
+function nextStep(from) {
+    if (from === 1 && !validateStep1()) return;
+    currentStep = from + 1;
+    if (currentStep === 3) updatePreview();
+    updateSteps(currentStep);
+}
+
+function prevStep(from) {
+    currentStep = from - 1;
+    updateSteps(currentStep);
+}
+
+function updatePreview() {
+    function get(id) { var el = document.getElementById(id); return el ? el.value || '-' : '-'; }
+    function getSelect(id) {
+        var el = document.getElementById(id);
+        return el ? el.options[el.selectedIndex] ? el.options[el.selectedIndex].text : '-' : '-';
+    }
+    document.getElementById('preview-codigo').textContent = get('field-codigo');
+    document.getElementById('preview-nombre').textContent = get('field-nombre');
+    document.getElementById('preview-categoria').textContent = getSelect('field-categoria');
+    var precio = get('field-precio');
+    document.getElementById('preview-precio').textContent = precio !== '-' ? '$' + parseFloat(precio).toLocaleString() : '-';
+    var cant = get('field-cantidad');
+    var min = get('field-stock-minimo');
+    document.getElementById('preview-stock').textContent = cant !== '-' ? cant + ' (min: ' + (min !== '-' ? min : '5') + ')' : '-';
+    document.getElementById('preview-proveedor').textContent = get('field-proveedor');
+    document.getElementById('preview-ubicacion').textContent = get('field-ubicacion');
+    document.getElementById('preview-garantia').textContent = get('field-garantia');
+}
+
+document.getElementById('field-descripcion').addEventListener('input', function() {
+    document.getElementById('descripcion-count').textContent = this.value.length;
+});
+
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+dropzone.addEventListener('dragover', function(e) { e.preventDefault(); dropzone.classList.add('dragover'); });
+dropzone.addEventListener('dragleave', function() { dropzone.classList.remove('dragover'); });
+dropzone.addEventListener('drop', function(e) {
+    e.preventDefault(); dropzone.classList.remove('dragover');
+    if (e.dataTransfer.files.length) { fileInput.files = e.dataTransfer.files; handleFile(e.dataTransfer.files[0]); }
+});
+fileInput.addEventListener('change', function() { if (fileInput.files.length) handleFile(fileInput.files[0]); });
+
+function handleFile(file) {
+    if (!file.type.match('image.*')) return;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        document.getElementById('preview-img').src = e.target.result;
+        document.getElementById('dropzone-content').style.display = 'none';
+        document.getElementById('dropzone-preview').style.display = 'block';
+        dropzone.classList.add('has-image');
+    };
+    reader.readAsDataURL(file);
+}
+
+['codigo', 'nombre', 'precio'].forEach(function(id) {
+    var el = document.getElementById('field-' + id);
+    if (!el) return;
+    el.addEventListener('blur', function() {
+        if (el.value.trim()) {
+            el.classList.remove('is-invalid'); el.classList.add('is-valid');
+            document.getElementById('feedback-' + id).innerHTML = '<small class="text-success">Correcto</small>';
+        } else { el.classList.remove('is-valid'); }
+    });
+});
+</script>
+{% endblock %}

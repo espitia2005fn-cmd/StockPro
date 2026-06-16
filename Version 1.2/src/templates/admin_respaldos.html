@@ -1,0 +1,55 @@
+{% extends "base_admin.html" %}
+{% block titulo %}Respaldos{% endblock %}
+{% block extra_css %}
+<style>
+.backup-file { padding: 12px 20px; border-bottom: 1px solid var(--gray-100); display: flex; justify-content: space-between; align-items: center; }
+.backup-file:last-child { border-bottom: none; }
+.backup-file:hover { background: var(--gray-50); }
+</style>
+{% endblock %}
+{% block contenido %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
+    <div><p class="page-subtitle">Respaldos automáticos cada 4 horas</p></div>
+    <button class="btn btn-primary btn-sm" onclick="crearRespaldo()">Respaldar Ahora</button>
+</div>
+<div class="d-flex gap-3 mb-4 flex-wrap" id="stats-respaldos"></div>
+<div class="table-container">
+    <div class="table-header"><h5 class="card-title">Archivos de Respaldo</h5></div>
+    <div id="lista-respaldos"><div class="text-center py-5 text-muted small">Cargando...</div></div>
+</div>
+<script>
+async function cargarRespaldos() {
+    try {
+        const res = await fetch('/api/respaldos');
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        const prox = data.proximo_backup || 'Sábado';
+        document.getElementById('stats-respaldos').innerHTML = [
+            {v:data.total_respaldos,l:'Total Respaldos',icon:'bi-archive',bg:'#e8f0ff',color:'#465fff'},
+            {v:data.ultimo_backup,l:'Último Respaldo',icon:'bi-clock-history',bg:'#e8fce8',color:'#12b76a'},
+            {v:data.horas_desde_ultimo+'h',l:'Horas desde último',icon:'bi-hourglass',bg:'#fff3e0',color:'#f79009'},
+            {v:prox,l:'Próximo respaldo',icon:'bi-calendar-check',bg:'#f0e8ff',color:'#7a5af8'}
+        ].map(function(i) {
+            return '<div class="stat-card d-flex align-items-center gap-3 flex-fill" style="min-width:180px;"><div style="width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:'+i.bg+';color:'+i.color+';flex-shrink:0;"><i class="bi '+i.icon+'"></i></div><div><p class="stat-label mb-0">'+i.l+'</p><h3 class="stat-value mb-0">'+i.v+'</h3></div></div>';
+        }).join('');
+        const container = document.getElementById('lista-respaldos');
+        if (!data.respaldos.length) { container.innerHTML = '<div class="text-center py-5 text-muted small">No hay respaldos aún</div>'; return; }
+        container.innerHTML = data.respaldos.map(r => {
+            const size = r.tamano > 1024*1024 ? (r.tamano/1024/1024).toFixed(1)+' MB' : (r.tamano/1024).toFixed(1)+' KB';
+            return '<div class="backup-file"><div><strong>'+r.nombre+'</strong><br><small class="text-muted">'+r.fecha+' — '+size+'</small></div><a href="/api/respaldos/descargar/'+r.nombre+'" class="btn btn-sm btn-secondary">Descargar</a></div>';
+        }).join('');
+    } catch(e) { document.getElementById('lista-respaldos').innerHTML = '<div class="text-center py-5 text-danger small">Error al cargar</div>'; }
+}
+async function crearRespaldo() {
+    const btn = event.target; btn.disabled = true; btn.textContent = 'Respaldando...';
+    try {
+        const res = await fetch('/api/respaldos/crear',{method:'POST',headers:{'X-CSRFToken':getCSRFToken()}});
+        const d = await res.json();
+        if (d.success) { mostrarNotificacion('Respaldo creado: '+d.archivo,false); cargarRespaldos(); }
+        else { mostrarNotificacion('Error: '+d.error,true); }
+    } catch(e) { mostrarNotificacion('Error al crear respaldo',true); }
+    btn.disabled = false; btn.textContent = 'Respaldar Ahora';
+}
+cargarRespaldos();
+</script>
+{% endblock %}

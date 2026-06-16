@@ -1,0 +1,94 @@
+{% extends "base_admin.html" %}
+{% block titulo %}Webhooks{% endblock %}
+{% block contenido %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
+  <div><p class="page-subtitle">Integraciones con servicios externos</p></div>
+  <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#nuevoWebhook"><i class="bi bi-plus-lg"></i> Nuevo Webhook</button>
+</div>
+
+{% if webhooks %}
+<div class="row g-3 mb-4">
+  {% for w in webhooks %}
+  <div class="col-md-6 col-lg-4">
+    <div class="stat-card p-3">
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <h6 class="mb-0 fw-bold">{{ w.nombre }}</h6>
+        <span class="badge bg-{{ 'success' if w.activo else 'secondary' }}">{{ 'Activo' if w.activo else 'Inactivo' }}</span>
+      </div>
+      <div class="small text-muted mb-2" style="word-break:break-all;">{{ w.url }}</div>
+      <div class="d-flex justify-content-between align-items-center">
+        <span class="badge badge-brand">{{ w.evento }}</span>
+        <div class="d-flex gap-1">
+          <button class="btn btn-sm btn-outline-danger" onclick="eliminarWebhook({{ w.id }})"><i class="bi bi-trash"></i></button>
+        </div>
+      </div>
+      <div class="small text-muted mt-2">
+        {% if w.ultima_respuesta > 0 %}
+        &Uacute;ltima: <span class="text-success">{{ w.ultima_respuesta }}</span>
+        {% elif w.ultimo_error %}
+        &Uacute;ltimo error: <span class="text-danger">{{ w.ultimo_error[:40] }}</span>
+        {% else %}
+        Sin ejecutar
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-5 text-muted">No hay webhooks configurados</div>
+{% endif %}
+
+{% if logs %}
+<h5 class="fw-bold mb-3">&Uacute;ltimos env&iacute;os</h5>
+<div class="card">
+  <div class="card-body p-0">
+    <div class="table-wrapper">
+      <table class="table table-sm mb-0">
+        <thead><tr><th>Fecha</th><th>Evento</th><th>URL</th><th>Respuesta</th></tr></thead>
+        <tbody>
+          {% for l in logs %}
+          <tr>
+            <td class="small text-muted" style="white-space:nowrap;">{{ l.fecha[:19] }}</td>
+            <td><span class="badge badge-brand">{{ l.evento }}</span></td>
+            <td class="small" style="word-break:break-all;max-width:300px;">{{ l.url }}</td>
+            <td>{% if l.respuesta > 0 %}<span class="badge bg-success">{{ l.respuesta }}</span>{% else %}<span class="badge bg-danger" title="{{ l.error }}">Error</span>{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Modal Nuevo Webhook -->
+<div class="modal fade" id="nuevoWebhook" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="/admin/webhooks/crear">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="modal-header" style="background:var(--brand-500);color:white;">
+          <h5 class="modal-title"><i class="bi bi-link-45deg"></i> Nuevo Webhook</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3"><label class="fw-bold">Nombre</label><input type="text" name="nombre" class="form-control" placeholder="Ej: Slack Notificaciones" required></div>
+          <div class="mb-3"><label class="fw-bold">URL</label><input type="url" name="url" class="form-control" placeholder="https://hooks.slack.com/..." required></div>
+          <div class="mb-3"><label class="fw-bold">Evento</label><select name="evento" class="form-select"><option value="pedido.nuevo">Pedido nuevo</option><option value="pedido.pagado">Pedido pagado</option><option value="stock.bajo">Stock bajo</option><option value="producto.creado">Producto creado</option></select></div>
+        </div>
+        <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-primary">Crear</button></div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+function eliminarWebhook(id) {
+  if (!confirm('Eliminar este webhook?')) return;
+  fetch('/admin/webhooks/eliminar/' + id, {method:'POST', headers:{'X-CSRFToken':getCSRFToken()}})
+  .then(function(r){return r.json()})
+  .then(function(d){if(d.success)location.reload();else alert(d.error);});
+}
+</script>
+{% endblock %}

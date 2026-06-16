@@ -1,0 +1,48 @@
+{% extends "base_public.html" %}
+
+{% block titulo %}Pedido Confirmado{% endblock %}
+
+{% block contenido %}
+<div class="py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-7 col-lg-6">
+            <div class="text-center p-4 p-md-5" style="background:#fff;border-radius:20px;box-shadow:0 10px 40px rgba(0,0,0,0.06);border:1px solid #f1f3f5;">
+                <div class="mb-3">
+                    <div style="width:80px;height:80px;border-radius:50%;background:#e8f5e9;display:flex;align-items:center;justify-content:center;margin:0 auto;">
+                        <i class="bi bi-check-lg" style="font-size:2.5rem;color:var(--success-500);"></i>
+                    </div>
+                </div>
+                <h3 style="color:var(--success-500);font-weight:800;">&iexcl;Pedido confirmado!</h3>
+                <p class="text-muted">Tu pedido ha sido registrado exitosamente.</p>
+
+                <div style="background:#f8f9fa;border-radius:14px;padding:18px;margin-top:20px;text-align:left;">
+                    <div class="d-flex justify-content-between py-1"><span class="text-muted small">Factura</span><strong>#{{ factura }}</strong></div>
+                    <div class="d-flex justify-content-between py-1"><span class="text-muted small">Total</span><strong style="color:var(--error-500);">${{ "{:,.0f}".format(total) }}</strong></div>
+                    <div class="d-flex justify-content-between py-1"><span class="text-muted small">M&eacute;todo</span><strong>
+                        {% if metodo == 'mercadopago' %}MercadoPago
+                        {% elif metodo == 'nequi' %}Nequi
+                        {% elif metodo == 'pse' %}PSE
+                        {% elif metodo == 'tarjeta' %}Tarjeta d&eacute;bito/cr&eacute;dito
+                        {% elif metodo == 'transferencia' %}Transferencia bancaria
+                        {% else %}Contra entrega
+                        {% endif %}
+                    </strong></div>
+                </div>
+
+                <p class="text-muted small mt-3 mb-0"><i class="bi bi-envelope"></i> Recibir&aacute;s un correo con los detalles.</p>
+
+                <div class="d-flex gap-2 justify-content-center mt-4 flex-wrap">
+                    <a href="/" class="btn btn-sm px-4" style="background:var(--error-500);color:#fff;border:none;border-radius:50px;font-weight:600;">
+                        <i class="bi bi-shop"></i> Seguir comprando
+                    </a>
+                    {% if session.user_id %}
+                    <a href="/cliente/pedidos" class="btn btn-sm px-4" style="background:var(--gray-600);color:#fff;border:none;border-radius:50px;font-weight:600;">
+                        <i class="bi bi-clock-history"></i> Mis pedidos
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,196 @@
+{% extends "base_admin.html" %}
+
+{% block titulo %}Clientes{% endblock %}
+
+{% block extra_css %}
+<style>
+.cliente-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+.cliente-card {
+  background: white;
+  border-radius: 16px;
+  border: 1px solid var(--gray-200);
+  padding: 20px;
+  transition: all 0.2s;
+  position: relative;
+}
+.cliente-card:hover {
+  box-shadow: 0 8px 30px rgba(0,0,0,0.06);
+  transform: translateY(-2px);
+}
+.cliente-avatar {
+  width: 48px; height: 48px;
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.4rem; font-weight: 700;
+  color: white; flex-shrink: 0;
+}
+.cliente-info { min-width: 0; }
+.cliente-info h6 { font-size: 0.95rem; font-weight: 700; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cliente-info small { color: var(--gray-500); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cliente-meta { display: flex; gap: 16px; padding-top: 12px; margin-top: 12px; border-top: 1px solid var(--gray-100); }
+.cliente-meta-item { flex: 1; text-align: center; }
+.cliente-meta-item .num { font-weight: 700; font-size: 1.1rem; }
+.cliente-meta-item .label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.3px; color: var(--gray-400); }
+.cliente-stats { display: flex; gap: 12px; }
+.cliente-stats .stat-card { flex: 1; }
+@media (max-width: 768px) {
+  .cliente-grid { grid-template-columns: 1fr; }
+}
+</style>
+{% endblock %}
+
+{% block contenido %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
+  <div>
+    <p class="page-subtitle">{{ clientes|length }} clientes registrados</p>
+  </div>
+  <div class="d-flex gap-2 align-items-center">
+    <input type="text" class="form-control form-control-sm" id="buscar-cliente" placeholder="Buscar cliente..." oninput="filtrarClientes()" style="width:200px;">
+    <a href="/registro" class="btn btn-primary btn-sm" target="_blank"><i class="bi bi-person-plus"></i> Nuevo</a>
+  </div>
+</div>
+
+{% set activos = clientes|selectattr('6', 'equalto', 1)|list|length %}
+{% set total_gastado = clientes|sum(attribute=9)|int %}
+<div class="cliente-stats mb-4">
+  <div class="stat-card d-flex align-items-center gap-3">
+    <div style="width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:var(--brand-50);color:var(--brand-500);flex-shrink:0;"><i class="bi bi-people"></i></div>
+    <div><p class="stat-label mb-0">Total</p><h3 class="stat-value mb-0">{{ clientes|length }}</h3></div>
+  </div>
+  <div class="stat-card d-flex align-items-center gap-3">
+    <div style="width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:var(--success-50);color:var(--success-600);flex-shrink:0;"><i class="bi bi-person-check"></i></div>
+    <div><p class="stat-label mb-0">Activos</p><h3 class="stat-value mb-0">{{ activos }}</h3></div>
+  </div>
+  <div class="stat-card d-flex align-items-center gap-3">
+    <div style="width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:var(--warning-50);color:var(--warning-600);flex-shrink:0;"><i class="bi bi-coin"></i></div>
+    <div><p class="stat-label mb-0">Total Gastado</p><h3 class="stat-value mb-0">${{ '{:,.0f}'.format(total_gastado) }}</h3></div>
+  </div>
+</div>
+
+<div class="cliente-grid" id="cliente-grid">
+  {% for c in clientes %}
+  {% set inicial = c[2][:1]|upper if c[2] else '?' %}
+  {% set colores_avatar = ['#465fff','#12b76a','#f79009','#f04438','#7a5af8','#0dcaf0','#d63384','#fd7e14'] %}
+    <div class="cliente-card" data-nombre="{{ c[2]|lower }}" data-email="{{ (c[3] or '')|lower }}" data-username="{{ c[1]|lower }}">
+    <div class="d-flex align-items-start gap-3">
+      {% set fotoc = c[8] if c|length > 8 and c[8] else '' %}
+      {% if fotoc %}
+      <img src="{{ url_for('static', filename='uploads/' + fotoc) }}" class="rounded-3" style="width:48px;height:48px;object-fit:cover;flex-shrink:0;">
+      {% else %}
+      <div class="cliente-avatar" style="background:{{ colores_avatar[c[0] % 8] }};">{{ inicial }}</div>
+      {% endif %}
+      <div class="cliente-info flex-grow-1">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <h6 class="mb-0 text-truncate" style="max-width:100%;">{{ c[2] }}</h6>
+          <span class="badge {{ 'bg-success' if c[6] else 'bg-secondary' }} rounded-pill flex-shrink-0" style="margin-left:auto;">{{ 'Activo' if c[6] else 'Inactivo' }}</span>
+        </div>
+        <small>{{ c[3] or 'Sin email' }}</small>
+        <small style="font-size:0.7rem;color:var(--gray-400);display:block;">@{{ c[1] }}</small>
+      </div>
+    </div>
+    <div class="cliente-meta">
+      <div class="cliente-meta-item">
+        <div class="num">{{ c[10] or 0 }}</div>
+        <div class="label">Pedidos</div>
+      </div>
+      <div class="cliente-meta-item">
+        <div class="num">${{ '{:,.0f}'.format((c[9]|int)) if c[9] else 0 }}</div>
+        <div class="label">Gastado</div>
+      </div>
+      <div class="cliente-meta-item">
+        <div class="num" style="font-size:0.85rem;">{{ c[7][:10] if c[7] else '-' }}</div>
+        <div class="label">Registro</div>
+      </div>
+    </div>
+    <div class="d-flex gap-2 mt-3">
+      <a href="/admin/ordenes?cliente={{ c[0] }}" class="btn btn-sm flex-fill" style="background:var(--gray-600);color:white;border:none;text-decoration:none;">
+        <i class="bi bi-receipt"></i> Pedidos ({{ c[10] or 0 }})
+      </a>
+      <button class="btn btn-sm flex-fill" style="background:var(--gray-600);color:white;border:none;" onclick='editarCliente({{ c[0] }}, "{{ c[2] }}", "{{ c[3] or '' }}", "{{ c[4] or '' }}", "{{ c[5] or '' }}", {{ c[6] }})' data-bs-toggle="modal" data-bs-target="#editarModal">
+        <i class="bi bi-pencil"></i> Editar
+      </button>
+      <button class="btn btn-sm flex-fill" style="background:var(--error-500);color:white;border:none;" onclick='confirmarEliminarCliente({{ c[0] }}, "{{ c[2] }}")' data-bs-toggle="modal" data-bs-target="#deleteClienteModal">
+        <i class="bi bi-trash"></i>
+      </button>
+    </div>
+  </div>
+  {% else %}
+  <div class="text-center py-5 text-muted col-12">No hay clientes registrados</div>
+  {% endfor %}
+</div>
+
+<!-- Modal Eliminar Cliente -->
+<div class="modal fade" id="deleteClienteModal" tabindex="-1">
+  <div class="modal-dialog modal-sm modal-dialog-centered">
+    <div class="modal-content">
+      <form method="POST" id="deleteClienteForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title text-danger"><i class="bi bi-exclamation-triangle-fill"></i> Eliminar Cliente</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body text-center py-4">
+          <p>¿Eliminar a <strong id="deleteClienteName"></strong>?</p>
+          <p class="text-danger small">Esta acci&oacute;n no se puede deshacer.</p>
+        </div>
+        <div class="modal-footer border-0 pt-0 justify-content-center">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-danger">Eliminar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Editar -->
+<div class="modal fade" id="editarModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" id="editForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="modal-header" style="background:var(--gray-600);color:white;">
+          <h5 class="modal-title"><i class="bi bi-pencil"></i> Editar Cliente</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3"><label class="fw-bold">Nombre</label><input type="text" name="nombre" id="edit_nombre" class="form-control" required></div>
+          <div class="mb-3"><label class="fw-bold">Email</label><input type="email" name="email" id="edit_email" class="form-control"></div>
+          <div class="mb-3"><label class="fw-bold">Teléfono</label><input type="text" name="telefono" id="edit_telefono" class="form-control"></div>
+          <div class="mb-3"><label class="fw-bold">Dirección</label><textarea name="direccion" id="edit_direccion" class="form-control" rows="2"></textarea></div>
+          <div class="form-check"><input type="checkbox" name="activo" class="form-check-input" id="edit_activo"><label class="form-check-label">Activo</label></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+function filtrarClientes() {
+  const q = document.getElementById('buscar-cliente').value.toLowerCase();
+  document.querySelectorAll('.cliente-card').forEach(c => {
+    const match = c.dataset.nombre.includes(q) || c.dataset.email.includes(q) || c.dataset.username.includes(q);
+    c.style.display = match ? '' : 'none';
+  });
+}
+function confirmarEliminarCliente(id, nombre) {
+  document.getElementById('deleteClienteName').textContent = nombre;
+  document.getElementById('deleteClienteForm').action = '/admin/cliente/eliminar/' + id;
+}
+function editarCliente(id, nombre, email, telefono, direccion, activo) {
+  document.getElementById('editForm').action = '/admin/cliente/editar/' + id;
+  document.getElementById('edit_nombre').value = nombre;
+  document.getElementById('edit_email').value = email;
+  document.getElementById('edit_telefono').value = telefono;
+  document.getElementById('edit_direccion').value = direccion;
+  document.getElementById('edit_activo').checked = activo == 1;
+}
+</script>
+{% endblock %}

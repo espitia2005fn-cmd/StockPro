@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StockPro | {% block titulo %}Autenticación{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tailadmin.css') }}">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #f0f2f5, #e4e7ec);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .auth-container { max-width: 420px; width: 100%; margin: 20px; }
+        .auth-card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.08);
+            animation: fadeInUp 0.5s ease;
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .logo { text-align: center; margin-bottom: 28px; }
+        .logo-icon {
+            background: #1d2939;
+            width: 64px; height: 64px;
+            border-radius: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+        }
+        .logo-icon i { font-size: 30px; color: white; }
+        .logo h1 { font-size: 26px; font-weight: 800; color: #1d2939; margin: 0; }
+        .logo h1 span { color: #f04438; }
+        .logo p { font-size: 13px; color: #98a2b3; margin-top: 4px; }
+        .form-control {
+            border-radius: 12px;
+            padding: 12px 16px;
+            border: 1px solid #d0d5dd;
+            background: #fcfcfd;
+            color: #1d2939;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+        .form-control:focus {
+            border-color: #1d2939;
+            box-shadow: 0 0 0 3px rgba(29,41,57,0.08);
+            background: white;
+            outline: none;
+        }
+        .form-control::placeholder { color: #98a2b3; }
+        .form-label { color: #344054; font-weight: 600; margin-bottom: 6px; font-size: 14px; }
+        .btn-brand {
+            background: #1d2939;
+            color: white;
+            border: none;
+            padding: 13px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 15px;
+            width: 100%;
+            transition: all 0.2s;
+        }
+        .btn-brand:hover {
+            background: #344054;
+            transform: translateY(-1px);
+        }
+        .btn-outline-brand {
+            background: transparent;
+            border: 1px solid #d0d5dd;
+            color: #667085;
+            padding: 12px;
+            border-radius: 12px;
+            font-weight: 500;
+            width: 100%;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+            font-size: 14px;
+        }
+        .btn-outline-brand:hover {
+            border-color: #1d2939;
+            color: #1d2939;
+        }
+        .toast-notification {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: var(--success-500);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+            opacity: 0;
+            transform: translateX(50px);
+            transition: opacity 0.3s, transform 0.3s;
+            pointer-events: none;
+        }
+        .toast-notification.error { background: var(--error-500); }
+        .toast-notification.show { opacity: 1; transform: translateX(0); }
+        .alert-custom { border-radius: 12px; margin-bottom: 20px; padding: 12px 16px; font-size: 14px; }
+        .auth-link { color: var(--brand-500); text-decoration: none; font-size: 13px; }
+        .auth-link:hover { color: var(--brand-600); text-decoration: underline; }
+        hr { border-color: var(--gray-200); margin: 20px 0; }
+        @media (max-width: 480px) {
+            .auth-card { padding: 28px 24px; }
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="logo">
+                <div class="logo-icon">{% block logo_icon %}<i class="bi bi-grid-1x2-fill"></i>{% endblock %}</div>
+                <h1>SAFOTAWARE</h1>
+                <p>{% block subtitulo %}{{ config.get('empresa_nombre', 'Sistema de gesti&oacute;n') }}{% endblock %}</p>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-custom">
+                            <i class="bi bi-{{ 'exclamation-triangle' if category == 'error' else 'check-circle' }} me-2"></i>
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            {% block contenido %}{% endblock %}
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function mostrarToast(mensaje, tipo) {
+            const toast = document.createElement('div');
+            toast.className = 'toast-notification ' + (tipo === 'error' ? 'error' : '');
+            toast.innerHTML = `<i class="bi ${tipo === 'error' ? 'bi-x-circle-fill' : 'bi-check-circle-fill'}"></i> ${mensaje}`;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.classList.add('show'), 10);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+        {% block extra_js %}{% endblock %}
+    </script>
+</body>
+</html>
