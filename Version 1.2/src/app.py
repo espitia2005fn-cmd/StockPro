@@ -139,10 +139,11 @@ def get_db():
     return db_adapter.get_connection()
 
 def init_db():
-    db.crear_tablas()
     if db_adapter.USING_PG:
         from . import database_supabase as db_supabase
         db_supabase.crear_tablas()
+    else:
+        db.crear_tablas()
 
 # ========== DECORADORES ==========
 def login_required(f):
