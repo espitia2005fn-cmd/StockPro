@@ -7,9 +7,11 @@ import os
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'stockpro.db')
 
 def obtener_conexion():
-    if os.environ.get('DATABASE_URL', '').startswith('postgresql'):
+    db_url = os.environ.get('DATABASE_URL', '')
+    if 'postgres' in db_url:
         from .db_adapter import get_connection
         return get_connection()
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     conn = sqlite3.connect(DB_PATH, timeout=10)
     conn.execute("PRAGMA foreign_keys = ON")
     conn.row_factory = sqlite3.Row

@@ -3,14 +3,14 @@ import re
 import sqlite3
 
 DATABASE_URL = os.environ.get('DATABASE_URL', '')
-USING_PG = DATABASE_URL.startswith('postgresql')
+USING_PG = 'postgres' in DATABASE_URL
 
 class IntegrityError(Exception):
     pass
 
 
 def get_connection():
-    if DATABASE_URL.startswith('postgresql'):
+    if 'postgres' in DATABASE_URL:
         return _PGConnection()
     conn = sqlite3.connect(_get_db_path(), timeout=10)
     conn.execute("PRAGMA foreign_keys = ON")
