@@ -1,0 +1,451 @@
+{% extends "base_admin.html" %}
+
+{% block titulo %}Analítica de Datos{% endblock %}
+
+{% block contenido %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
+    <div>
+        <p class="page-subtitle">M&eacute;tricas clave, tendencias y predicciones de inventario</p>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <label class="text-muted small me-1">Período:</label>
+        <select id="periodo" class="form-select d-inline-block w-auto">
+            <option value="7">Últimos 7 días</option>
+            <option value="30" selected>Últimos 30 días</option>
+            <option value="90">Últimos 90 días</option>
+        </select>
+
+    </div>
+</div>
+
+<div class="d-flex gap-3 mb-4 flex-wrap">
+    <div class="stat-card d-flex align-items-center gap-3 flex-fill" style="min-width:180px;">
+        <div style="width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:var(--brand-50);color:var(--brand-500);flex-shrink:0;"><i class="bi bi-box"></i></div>
+        <div><p class="stat-label mb-0">Total Productos</p><h3 id="total-productos" class="stat-value mb-0">-</h3></div>
+    </div>
+    <div class="stat-card d-flex align-items-center gap-3 flex-fill" style="min-width:180px;">
+        <div style="width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:var(--success-50);color:var(--success-600);flex-shrink:0;"><i class="bi bi-coin"></i></div>
+        <div><p class="stat-label mb-0">Valor Inventario</p><h3 id="valor-total" class="stat-value mb-0">-</h3></div>
+    </div>
+    <div class="stat-card d-flex align-items-center gap-3 flex-fill" style="min-width:180px;">
+        <div style="width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:var(--error-50);color:var(--error-500);flex-shrink:0;"><i class="bi bi-exclamation-triangle"></i></div>
+        <div><p class="stat-label mb-0">Stock Cr&iacute;tico</p><h3 id="stock-critico" class="stat-value mb-0" style="color:var(--danger-500);">-</h3></div>
+    </div>
+    <div class="stat-card d-flex align-items-center gap-3 flex-fill" style="min-width:180px;">
+        <div style="width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:var(--warning-50);color:var(--warning-600);flex-shrink:0;"><i class="bi bi-heart-pulse"></i></div>
+        <div><p class="stat-label mb-0">Salud Stock</p><h3 id="salud-stock" class="stat-value mb-0" style="color:var(--success-500);">-</h3></div>
+    </div>
+</div>
+
+<div class="d-flex gap-3 mb-4 flex-wrap">
+    <div class="stat-card d-flex align-items-center gap-3 flex-fill" style="min-width:180px;">
+        <div style="width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:#e8f4f8;color:#0dcaf0;flex-shrink:0;"><i class="bi bi-arrow-repeat"></i></div>
+        <div><p class="stat-label mb-0">Rotaci&oacute;n Stock</p><h3 id="rotacion-stock" class="stat-value mb-0">-</h3><small class="text-muted">d&iacute;as promedio</small></div>
+    </div>
+    <div class="stat-card d-flex align-items-center gap-3 flex-fill" style="min-width:180px;">
+        <div style="width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:var(--brand-50);color:var(--brand-500);flex-shrink:0;"><i class="bi bi-receipt"></i></div>
+        <div><p class="stat-label mb-0">Ticket Promedio</p><h3 id="ticket-promedio" class="stat-value mb-0">-</h3></div>
+    </div>
+    <div class="stat-card d-flex align-items-center gap-3 flex-fill" style="min-width:180px;">
+        <div style="width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:var(--success-50);color:var(--success-600);flex-shrink:0;"><i class="bi bi-graph-up-arrow"></i></div>
+        <div><p class="stat-label mb-0">Crecimiento Ventas</p><h3 id="crecimiento-ventas" class="stat-value mb-0" style="color:var(--success-500);">-</h3><small class="text-muted">vs per&iacute;odo anterior</small></div>
+    </div>
+    <div class="stat-card d-flex align-items-center gap-3 flex-fill" style="min-width:180px;">
+        <div style="width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:#f8f0ff;color:#7a5af8;flex-shrink:0;"><i class="bi bi-percent"></i></div>
+        <div><p class="stat-label mb-0">Margen Promedio</p><h3 id="margen-promedio" class="stat-value mb-0">-</h3><small class="text-muted">%</small></div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-12">
+        <div class="chart-container">
+            <div class="chart-header">
+                <h5 class="chart-title"><i class="bi bi-graph-up me-2"></i>Evoluci&oacute;n de Ventas</h5>
+            </div>
+            <div id="ventasChart" style="height:320px; width:100%"></div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-12">
+        <div class="chart-container">
+            <div class="chart-header">
+                <h5 class="chart-title"><i class="bi bi-pie-chart me-2"></i>Distribuci&oacute;n por Categor&iacute;a</h5>
+            </div>
+            <div id="chartCats" style="height:320px; width:100%"></div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-12">
+        <div class="d-flex gap-4 flex-wrap">
+            <div class="chart-container flex-fill" style="min-width:300px;">
+                <div class="chart-header">
+                    <h5 class="chart-title"><i class="bi bi-trophy-fill me-2"></i>Top 10 M&aacute;s Vendidos</h5>
+                </div>
+                <div id="topChart" style="height:280px; width:100%"></div>
+            </div>
+            <div class="table-container flex-fill" style="min-width:300px;">
+                <div class="table-header">
+                    <h5 class="card-title"><i class="bi bi-bar-chart-fill me-2"></i>Detalle Top 10</h5>
+                </div>
+                <div class="table-wrapper">
+                    <div class="table-responsive" style="max-height:280px; overflow-y:auto;">
+                        <table class="table table-sm table-hover mb-0" id="tabla-top10">
+                            <thead><tr><th>#</th><th>Producto</th><th class="text-center">Ventas</th></tr></thead>
+                            <tbody id="top10-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-12">
+        <div class="chart-container">
+            <div class="chart-header">
+                <h5 class="chart-title"><i class="bi bi-arrow-repeat me-2"></i>Rotaci&oacute;n por Categor&iacute;a</h5>
+            </div>
+            <div id="rotacionChart" style="height:300px; width:100%"></div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-12">
+        <div class="chart-container">
+            <div class="chart-header">
+                <h5 class="chart-title"><i class="bi bi-calendar-check me-2"></i>Estacionalidad</h5>
+            </div>
+            <div id="estacionalidad-card" class="text-center p-3"></div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-12">
+        <div class="d-flex gap-4 flex-wrap">
+            <div class="table-container flex-fill" style="min-width:300px;">
+                <div class="table-header">
+                    <h5 class="card-title"><i class="bi bi-box-seam me-2"></i>Clasificaci&oacute;n ABC</h5>
+                </div>
+                <div class="table-wrapper">
+                    <div class="table-responsive" style="max-height:320px; overflow-y:auto;">
+                        <table class="table table-sm table-hover mb-0" id="tabla-abc">
+                            <thead><tr><th>Producto</th><th class="text-center">Ventas (30d)</th><th class="text-center">Categor&iacute;a</th></tr></thead>
+                            <tbody id="abc-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="table-container flex-fill" style="min-width:300px;">
+                <div class="table-header">
+                    <h5 class="card-title"><i class="bi bi-exclamation-triangle me-2"></i>Sin movimiento (60 d&iacute;as)</h5>
+                </div>
+                <div class="table-wrapper">
+                    <div class="table-responsive" style="max-height:320px; overflow-y:auto;">
+                        <table class="table table-sm table-hover mb-0" id="tabla-sinmov">
+                            <thead><tr><th>Producto</th><th class="text-center">Stock</th><th class="text-end">Precio</th><th>&Uacute;ltima venta</th></tr></thead>
+                            <tbody id="sinmov-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-12">
+        <div class="d-flex gap-4 flex-wrap">
+            <div class="chart-container flex-fill" style="min-width:300px;">
+                <div class="chart-header">
+                    <h5 class="chart-title"><i class="bi bi-lightbulb me-2"></i>Alertas Inteligentes</h5>
+                </div>
+                <div id="alertas-inteligentes" style="max-height:240px; overflow-y:auto;" class="p-3"></div>
+            </div>
+            <div class="chart-container flex-fill" style="min-width:300px;">
+                <div class="chart-header">
+                    <h5 class="chart-title"><i class="bi bi-box-arrow-up-right me-2"></i>Exportar Datos</h5>
+                </div>
+                <div class="p-3 d-flex flex-wrap gap-2">
+                    <a href="/exportar/csv/completo" class="btn btn-sm btn-outline-primary"><i class="bi bi-filetype-csv"></i> CSV Completo</a>
+                    <a href="/exportar/csv/respaldo" class="btn btn-sm btn-outline-secondary"><i class="bi bi-download"></i> Respaldo CSV</a>
+                    <button class="btn btn-sm btn-outline-success" onclick="mostrarNotificacion('Exportaci&oacute;n iniciada')"><i class="bi bi-printer"></i> Imprimir</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="table-container mt-3">
+    <div class="table-header">
+        <h5 class="card-title"><i class="bi bi-magic me-2"></i>Predicciones de Reposici&oacute;n + Pron&oacute;stico de Demanda</h5>
+    </div>
+    <div class="table-wrapper">
+        <div class="table-responsive" style="overflow-x:auto;">
+            <table class="table table-hover mb-0" id="tabla-predicciones" style="font-size:0.9rem;">
+                <thead class="bg-dark text-white">
+                    <tr><th>Producto</th><th class="text-center">Stock</th><th class="text-center">M&iacute;nimo</th><th class="text-center">Necesario</th><th class="text-center">Tendencia</th><th class="text-center">D&iacute;as rest.</th><th class="text-center">Pred 7d</th><th class="text-center">Pred 15d</th><th class="text-center">Pred 30d</th><th class="text-center">Prioridad</th></tr>
+                </thead>
+                <tbody id="predicciones-body"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+    .alerta-item {
+        padding: 10px 14px;
+        margin-bottom: 8px;
+        border-radius: 8px;
+        border-left: 4px solid;
+        transition: all 0.2s;
+    }
+    .alerta-item:hover { transform: translateX(5px); }
+    .alerta-item.critica { background: rgba(230,57,70,0.1); border-left-color: var(--error-500); }
+    .alerta-item.alta { background: rgba(255,107,53,0.1); border-left-color: var(--warning-500); }
+    .alerta-item.media { background: rgba(255,193,7,0.1); border-left-color: #ffc107; }
+    .alerta-item.baja { background: rgba(40,167,69,0.1); border-left-color: var(--success-500); }
+    .alerta-item strong { display:block; margin-bottom:3px; color:var(--gray-dark); }
+    .alerta-item small { color:#6c757d; }
+    
+    @media print {
+        body * { visibility: hidden; }
+        .sidebar, .btn, .d-flex, .navbar { display: none !important; }
+    }
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
+
+<script>
+const COLORS = ['#465fff','#12b76a','#f79009','#f04438','#7a5af8','#0dcaf0','#d63384','#6f42c1','#fd7e14','#20c997'];
+const colores = { azul: '#465FFF', azul_claro: '#9CB9FF', naranja: '#f79009', rojo: '#f04438', verde: '#12b76a', gris: '#1d2939' };
+
+function crearEChart(id, option) {
+    var cont = document.getElementById(id);
+    if (!cont) return null;
+    var instance = echarts.getInstanceByDom(cont);
+    if (instance) instance.dispose();
+    instance = echarts.init(cont);
+    instance.setOption(option);
+    return instance;
+}
+
+window.addEventListener('resize', function() {
+    document.querySelectorAll('[id$="Chart"]').forEach(function(el) {
+        var inst = echarts.getInstanceByDom(el);
+        if (inst) inst.resize();
+    });
+});
+
+function mostrarNotificacion(mensaje, esError = false) {
+    const toast = document.createElement('div');
+    toast.className = 'notif-toast' + (esError ? ' error' : '');
+    toast.innerHTML = `<i class="bi ${esError ? 'bi-x-circle-fill' : 'bi-check-circle-fill'}"></i> ${mensaje}`;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.classList.add('show'), 10);
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, 2500);
+}
+
+async function cargarTodo() {
+    const dias = document.getElementById('periodo').value;
+
+    try {
+        const stats = await (await fetch('/api/estadisticas')).json();
+        document.getElementById('total-productos').innerText = stats.total_productos;
+        document.getElementById('valor-total').innerHTML = '$' + (stats.valor_total || 0).toLocaleString();
+        document.getElementById('stock-critico').innerText = stats.stock_critico;
+        document.getElementById('salud-stock').innerHTML = (stats.salud_inventario || 100) + '%';
+
+        try {
+            const rotacion = await (await fetch('/api/analytics/rotacion_stock')).json();
+            document.getElementById('rotacion-stock').innerHTML = rotacion.dias_promedio || '-';
+        } catch(e) { console.error('rotacion error', e); }
+
+        try {
+            const ventasStats = await (await fetch(`/api/analytics/resumen_ventas?dias=${dias}`)).json();
+            document.getElementById('ticket-promedio').innerHTML = '$' + (ventasStats.ticket_promedio || 0).toLocaleString();
+            const crecimiento = ventasStats.crecimiento || 0;
+            document.getElementById('crecimiento-ventas').innerHTML = crecimiento + '%';
+            document.getElementById('crecimiento-ventas').style.color = crecimiento >= 0 ? colores.verde : colores.rojo;
+        } catch(e) { console.error('resumen ventas error', e); }
+
+        try {
+            const margen = await (await fetch('/api/analytics/margen_promedio')).json();
+            document.getElementById('margen-promedio').innerHTML = (margen.promedio || 0) + '%';
+        } catch(e) { console.error('margen error', e); }
+
+        if (stats.distribucion_categorias?.categorias.length) {
+            crearEChart('chartCats', {
+                tooltip: { trigger: 'item' },
+                legend: { bottom: '0%' },
+                series: [{
+                    type: 'pie', radius: ['40%', '70%'], avoidLabelOverlap: true,
+                    label: { show: false },
+                    emphasis: { label: { show: true, fontSize: 14, fontWeight: 'bold' } },
+                    data: stats.distribucion_categorias.categorias.map(function(n, i) {
+                        return { name: n, value: stats.distribucion_categorias.cantidades[i], itemStyle: { color: COLORS[i % COLORS.length] } };
+                    })
+                }]
+            });
+        }
+
+        const ventas = await (await fetch(`/api/ventas/evolucion?dias=${dias}`)).json();
+        crearEChart('ventasChart', {
+            tooltip: { trigger: 'axis' },
+            grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+            xAxis: { type: 'category', data: ventas.map(v => v.fecha), boundaryGap: false },
+            yAxis: { type: 'value' },
+            series: [{
+                type: 'line', smooth: true,
+                data: ventas.map(v => v.ventas),
+                lineStyle: { color: '#465FFF' },
+                areaStyle: { color: 'rgba(70,95,255,0.1)' },
+                itemStyle: { color: '#465FFF' },
+                showSymbol: false
+            }]
+        });
+
+        const bigdata = await (await fetch('/api/bigdata/analisis')).json();
+        if (bigdata.productos_mas_vendidos?.length) {
+            const top10 = bigdata.productos_mas_vendidos.slice(0, 10);
+            crearEChart('topChart', {
+                tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+                grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+                xAxis: { type: 'value' },
+                yAxis: { type: 'category', data: top10.map(p => p.nombre), inverse: true },
+                series: [{
+                    type: 'bar',
+                    data: top10.map(p => p.movimientos),
+                    itemStyle: { color: '#465FFF', borderRadius: [0, 5, 5, 0] }
+                }]
+            });
+        }
+        let top10Html = '';
+        const top10data = bigdata.productos_mas_vendidos?.slice(0, 10) || [];
+        top10data.forEach(function(p, i) {
+            top10Html += '<tr><td>' + (i + 1) + '</td><td>' + (p.nombre || 'Producto eliminado') + '</td><td class="text-center fw-bold">' + p.movimientos + '</td></tr>';
+        });
+        document.getElementById('top10-body').innerHTML = top10Html || '<tr><td colspan="3" class="text-muted text-center">No hay datos</td></tr>';
+
+        try {
+            const rotacionCat = await (await fetch('/api/analytics/rotacion_por_categoria')).json();
+            if (rotacionCat && rotacionCat.length > 0) {
+                crearEChart('rotacionChart', {
+                    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+                    grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+                    xAxis: { type: 'category', data: rotacionCat.map(r => r.categoria) },
+                    yAxis: { type: 'value' },
+                    series: [{
+                        type: 'bar',
+                        data: rotacionCat.map(r => r.dias),
+                        itemStyle: { color: '#f04438', borderRadius: [5, 5, 0, 0] }
+                    }]
+                });
+            }
+        } catch(e) { console.error('rotacion categorias error', e); }
+
+        const abc = await (await fetch('/api/analytics/clasificacion_abc')).json();
+        let abcHtml = '';
+        for (const item of abc.slice(0, 15)) {
+            const badgeColor = item.categoria === 'A' ? colores.rojo : (item.categoria === 'B' ? colores.naranja : colores.gris);
+            abcHtml += `<tr><td>${item.nombre}</td><td class="text-center">${item.ventas}</td><td class="text-center"><span class="badge" style="background:${badgeColor}">${item.categoria}</span></td></tr>`;
+        }
+        document.getElementById('abc-body').innerHTML = abcHtml || '<tr><td colspan="3">No hay datos</td></tr>';
+
+        const sinmov = await (await fetch('/api/analytics/sin_movimiento')).json();
+        let sinmovHtml = '';
+        for (const item of sinmov.slice(0, 10)) {
+            sinmovHtml += `<tr><td>${item.nombre}</td><td class="text-center">${item.stock}</td><td class="text-end">$${item.precio.toLocaleString()}</td><td><small>${item.ultima_venta || 'Nunca'}</small></td></tr>`;
+        }
+        document.getElementById('sinmov-body').innerHTML = sinmovHtml || '<tr><td colspan="4">No hay datos</td></tr>';
+
+        try {
+            const estacion = await (await fetch('/api/analytics/estacionalidad_avanzada')).json();
+            let estacionHtml = '<p class="text-muted">No hay datos suficientes</p>';
+            if (!estacion.error) {
+                const varClass = estacion.variacion_mensual >= 0 ? colores.verde : colores.rojo;
+                const varAnualClass = estacion.variacion_anual >= 0 ? colores.verde : colores.rojo;
+                estacionHtml = `
+                    <div class="row">
+                        <div class="col-6 border-end">
+                            <strong>vs Mes Anterior</strong>
+                            <p class="mb-0 mt-2">${estacion.mes_actual}: <strong>${estacion.ventas_actual}</strong></p>
+                            <p>${estacion.mes_anterior}: ${estacion.ventas_anterior}</p>
+                            <p style="color:${varClass}">${estacion.variacion_mensual}%</p>
+                        </div>
+                        <div class="col-6">
+                            <strong>vs Año Anterior</strong>
+                            <p class="mb-0 mt-2">${estacion.anio_actual}: <strong>${estacion.ventas_actual}</strong></p>
+                            <p>${estacion.anio_anterior}: ${estacion.ventas_anio_anterior}</p>
+                            <p style="color:${varAnualClass}">${estacion.variacion_anual}%</p>
+                        </div>
+                    </div>
+                `;
+            }
+            document.getElementById('estacionalidad-card').innerHTML = estacionHtml;
+        } catch(e) { console.error('estacionalidad error', e); }
+
+        try {
+            const alertas = await (await fetch('/api/analytics/alertas_inteligentes')).json();
+            let alertasHtml = '';
+            if (alertas.length === 0) {
+                alertasHtml = '<div class="alert alert-success"> Todo en orden</div>';
+            } else {
+                for (const al of alertas.slice(0, 6)) {
+                    alertasHtml += `<div class="alerta-item ${al.nivel}"><strong><i class="bi ${al.icono} me-2"></i>${al.titulo}</strong><p class="mb-0 small mt-1">${al.mensaje}</p></div>`;
+                }
+            }
+            document.getElementById('alertas-inteligentes').innerHTML = alertasHtml;
+        } catch(e) { console.error('alertas error', e); }
+
+        const tendencias = await (await fetch('/api/productos/tendencias')).json();
+        const demanda = await (await fetch('/api/analytics/prediccion_demanda')).json();
+        let predHtml = '';
+        let contador = 0;
+        for (let i = 0; i < tendencias.length && contador < 15; i++) {
+            const p = tendencias[i];
+            const d = demanda.find(dd => dd.nombre === p.nombre);
+            if (!d) continue;
+            const necesidad = (p.stock_minimo * 2) - p.stock_actual;
+            if (necesidad <= 0 && p.dias_restantes > 30) continue;
+            contador++;
+            let prioridad = 'Baja', badge = colores.gris;
+            if (necesidad > 20) { prioridad = 'Alta'; badge = colores.rojo; }
+            else if (necesidad > 10) { prioridad = 'Media'; badge = colores.naranja; }
+            const tendenciaColor = p.tendencia === 'alza' ? colores.verde : (p.tendencia === 'baja' ? colores.rojo : colores.gris);
+            predHtml += `<tr>
+                <td>${p.nombre}</td>
+                <td class="text-center">${p.stock_actual}</td>
+                <td class="text-center">${p.stock_minimo}</td>
+                <td class="text-center fw-bold" style="color:${colores.naranja}">${necesidad > 0 ? '+' + necesidad : 'OK'}</td>
+                <td style="color:${tendenciaColor}">${p.tendencia === 'alza' ? ' Alza' : (p.tendencia === 'baja' ? ' Baja' : ' Estable')}</td>
+                <td class="text-center">${p.dias_restantes === 999 ? '' : p.dias_restantes}</td>
+                <td class="text-center">${d.prediccion_7d}</td>
+                <td class="text-center">${d.prediccion_15d}</td>
+                <td class="text-center">${d.prediccion_30d}</td>
+                <td class="text-center"><span class="badge" style="background:${badge}">${prioridad}</span></td>
+            </tr>`;
+        }
+        document.getElementById('predicciones-body').innerHTML = predHtml || '<tr><td colspan="10">No hay datos</td></tr>';
+
+    } catch(e) {
+        console.error(e);
+        var msg = 'Error cargando datos';
+        if (typeof echarts === 'undefined') msg = 'Error: No se carg&oacute; ECharts';
+        mostrarNotificacion(msg, true);
+    }
+}
+
+document.getElementById('periodo').addEventListener('change', () => cargarTodo());
+cargarTodo();
+</script>
+{% endblock %}

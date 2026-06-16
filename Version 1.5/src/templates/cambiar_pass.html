@@ -1,0 +1,30 @@
+{% extends "base_auth.html" %}
+
+{% block titulo %}Nueva Contraseña{% endblock %}
+
+{% block logo_icon %}<i class="bi bi-lock-fill"></i>{% endblock %}
+
+{% block subtitulo %}Nueva contraseña{% endblock %}
+
+{% block contenido %}
+<form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="mb-3">
+        <label class="form-label">Nueva contraseña</label>
+        <input type="password" name="password" class="form-control" required minlength="4">
+    </div>
+    <button type="submit" class="btn-brand">
+        <i class="bi bi-check-circle"></i> Actualizar contraseña
+    </button>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+            mostrarToast({{ message|tojson|safe }}, {{ ("error" if category == "error" else "success")|tojson|safe }});
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+{% endblock %}

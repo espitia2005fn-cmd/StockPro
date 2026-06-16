@@ -1,0 +1,109 @@
+{% extends "base_admin.html" %}
+
+{% block titulo %}Base de Datos{% endblock %}
+
+{% block extra_css %}
+<style>
+.scroll-table { max-height: 480px; overflow: auto; border-radius: 8px; margin-top:0; }
+.scroll-table thead { position: sticky; top: 0; z-index: 2; }
+.scroll-table thead th { padding: 5px 8px; white-space: nowrap; background:var(--gray-50); border-bottom:1px solid var(--gray-200); font-size:0.65rem; text-transform:uppercase; letter-spacing:0.3px; }
+.scroll-table tbody td { padding: 4px 8px; vertical-align: middle; font-size:0.72rem; white-space:nowrap; max-width:120px; overflow:hidden; text-overflow:ellipsis; }
+.fila-click { cursor: pointer; }
+.fila-click td:last-child { width: 20px; text-align: center; user-select: none; color:var(--gray-400); font-size:0.7rem; }
+.row-detalle { display: none; }
+.row-detalle td { padding: 10px 14px; background:var(--gray-50); }
+.detalle-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; }
+.detalle-item { padding: 6px 10px; border-radius: 6px; border: 1px solid var(--gray-200); background:white; }
+.detalle-item label { font-size: 0.55rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray-400); font-weight: 600; display: block; margin-bottom: 1px; }
+.detalle-item span { font-size:0.75rem; }
+</style>
+{% endblock %}
+
+{% block contenido %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div><p class="page-subtitle mb-0">Visor general de tablas del sistema</p></div>
+    <div style="display:flex;gap:4px;flex-wrap:wrap;" id="tabs-db"></div>
+</div>
+
+<div class="d-flex gap-2 mb-3 flex-wrap" id="stats-db"></div>
+
+<div style="max-width:250px;" class="mb-3">
+    <input type="text" class="form-control form-control-sm" id="db-search" placeholder="Buscar en esta tabla..." oninput="filtrarTabla()" style="display:none;">
+</div>
+
+<div id="contenido-db">
+    <div class="text-center py-5 text-muted">
+        <div class="spinner-border spinner-border-sm text-secondary" role="status"></div>
+        <p class="mt-2 small">Cargando base de datos...</p>
+    </div>
+</div>
+
+<script>
+let dbData = null, seccionActual = 'productos';
+async function cargarDB() {
+    document.getElementById('contenido-db').innerHTML = '<div class="text-center py-5 text-muted"><div class="spinner-border spinner-border-sm" role="status"></div><p class="mt-2 small">Cargando...</p></div>';
+    try {
+        const res = await fetch('/api/basedatos');
+        dbData = await res.json();
+        if (dbData.error) throw new Error(dbData.error);
+        const s = dbData.stats;
+        document.getElementById('stats-db').innerHTML = [
+            {k:'productos',l:'Productos'},{k:'movimientos',l:'Movimientos'},{k:'usuarios',l:'Usuarios'},
+            {k:'pedidos',l:'Pedidos'},{k:'categorias',l:'Categorías'}
+        ].map(i => `<div class="stat-card d-flex align-items-center gap-2 px-2 py-1"><p class="stat-label mb-0" style="font-size:0.65rem;">${i.l}</p><h6 class="stat-value mb-0 ms-auto">${s['total_'+i.k]}</h6></div>`).join('');
+        const tabs = ['productos','movimientos','usuarios','pedidos','categorias'];
+        const labels = {productos:'Productos',movimientos:'Movimientos',usuarios:'Usuarios',pedidos:'Pedidos',categorias:'Categorías'};
+        document.getElementById('tabs-db').innerHTML = tabs.map(t => `<button class="btn btn-sm ${seccionActual===t?'btn-primary':'btn-secondary'}" style="font-size:0.7rem;padding:2px 10px;" onclick="mostrarSeccion('${t}')">${labels[t]}</button>`).join('');
+        mostrarSeccion(seccionActual);
+    } catch(e) { document.getElementById('contenido-db').innerHTML = '<div class="text-center py-5 text-danger small">Error al cargar</div>'; }
+}
+function mostrarSeccion(seccion) {
+    seccionActual = seccion;
+    document.querySelectorAll('#tabs-db .btn-primary').forEach(b => b.className = 'btn btn-sm btn-secondary');
+    Array.from(document.querySelectorAll('#tabs-db button')).find(b => b.textContent.trim().toLowerCase().includes(seccion))?.classList.replace('btn-secondary','btn-primary');
+    document.getElementById('db-search').style.display = 'block';
+    document.getElementById('db-search').value = '';
+    renderizarTabla(seccion, dbData[seccion]||[]);
+}
+function fmt(k,v) {
+    if (v===null||v===undefined) return '-';
+    if ((k==='precio'||k==='total'||k==='precio_unitario'||k==='costo')&&typeof v==='number') return '$'+Number(v).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
+    if (k==='activo') return v==1?'Sí':'No';
+    if (k==='fecha'||k==='fecha_registro') { if(typeof v==='string'&&v.includes('T')) try{return v.split('T')[0]+' '+v.split('T')[1].split('.')[0];}catch(e){} if(typeof v==='string'&&v.length===10) return v; }
+    return v;
+}
+function renderizarTabla(seccion, datos) {
+    const contenedor = document.getElementById('contenido-db');
+    if (!datos||!datos.length) { contenedor.innerHTML = '<div class="text-center py-5 text-muted"><p class="small">No hay registros en esta tabla</p></div>'; return; }
+    const keys = Object.keys(datos[0]);
+    const headers = keys.map(k => k.charAt(0).toUpperCase()+k.slice(1).replace(/_/g,' '));
+    let html = `<div class="d-flex justify-content-between mb-1"><small class="text-muted">${datos.length} registro(s)</small></div><div class="table-container" style="overflow-x:auto;"><div class="scroll-table"><table class="table" style="width:100%;min-width:400px;"><thead><tr>`;
+    headers.forEach(h => html+=`<th>${h}</th>`);
+    html+=`<th style="width:30px;"></th></tr></thead><tbody>`;
+    for (let i=0;i<datos.length;i++) {
+        const row=datos[i];
+        html+=`<tr class="fila-click" onclick="toggleDetalle(${i})" data-idx="${i}">`;
+        keys.forEach(k => html+=`<td title="${fmt(k,row[k])}">${fmt(k,row[k])}</td>`);
+        html+=`<td>+</td></tr><tr class="row-detalle" data-idx="${i}"><td colspan="${keys.length+1}"><div class="detalle-grid">`;
+        keys.forEach(k => { const label=k.charAt(0).toUpperCase()+k.slice(1).replace(/_/g,' '); html+=`<div class="detalle-item"><label>${label}</label><span>${fmt(k,row[k])}</span></div>`; });
+        html+=`</div></td></tr>`;
+    }
+    html+=`</tbody></table></div></div>`;
+    contenedor.innerHTML = html;
+}
+function filtrarTabla() {
+    const q=document.getElementById('db-search').value.toLowerCase();
+    const datos=dbData[seccionActual]||[];
+    if (!q) { renderizarTabla(seccionActual,datos); return; }
+    renderizarTabla(seccionActual,datos.filter(row => Object.values(row).some(v=>String(v||'').toLowerCase().includes(q))));
+}
+function toggleDetalle(idx) {
+    const d=document.querySelector(`.row-detalle[data-idx="${idx}"]`);
+    const f=document.querySelector(`.fila-click[data-idx="${idx}"]`);
+    if (!d) return;
+    if (d.style.display==='table-row') { d.style.display='none'; if(f) f.querySelector('td:last-child').textContent='+'; }
+    else { document.querySelectorAll('.row-detalle').forEach(r=>r.style.display='none'); document.querySelectorAll('.fila-click td:last-child').forEach(t=>t.textContent='+'); d.style.display='table-row'; if(f) f.querySelector('td:last-child').textContent='−'; }
+}
+cargarDB();
+</script>
+{% endblock %}
