@@ -3000,7 +3000,7 @@ def admin_cache_limpiar():
     return jsonify({'success': True})
 
 # ========== INICIALIZAR DB AL CARGAR ==========
-db.crear_tablas()
+init_db()
 
 # Crear directorio de backups al iniciar
 os.makedirs(BACKUP_DIR, exist_ok=True)
