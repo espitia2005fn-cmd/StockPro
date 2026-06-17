@@ -155,7 +155,7 @@
     .product-img-wrap img { max-width:100px; max-height:100px; }
     
     .btn-detail {
-        background: var(--gray-600);
+        background: var(--primary-color);
         color: white;
         border: none;
         padding: 8px 12px;
@@ -171,13 +171,13 @@
         width: 48%;
     }
     .btn-detail:hover {
-        background: #495057;
+        background: var(--primary-dark);
         transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        box-shadow: 0 4px 12px rgba(230,57,70,0.3);
         color: white;
     }
     .btn-cart-index {
-        background: var(--gray-600);
+        background: var(--secondary-color);
         color: white;
         border: none;
         padding: 8px 12px;
@@ -188,9 +188,9 @@
         width: 48%;
     }
     .btn-cart-index:hover {
-        background: #495057;
+        background: var(--dark-bg);
         transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     }
     .button-group-index {
         display: flex;
@@ -430,7 +430,7 @@ async function cargarIndex() {
                 '<div class="card-body" style="padding:12px 14px;">' +
                 '<h6 style="font-size:0.85rem;font-weight:700;margin-bottom:2px;">' + p.nombre + '</h6>' +
                 '<small class="text-muted" style="font-size:0.7rem;">' + p.codigo + '</small>' +
-                '<p class="fw-bold mt-2 mb-2" style="font-size:1.1rem;color:var(--error-500);">$' + p.precio.toLocaleString() + '</p>' +
+                '<p class="fw-bold mt-2 mb-2" style="font-size:1.1rem;color:var(--primary-color);">$' + p.precio.toLocaleString() + '</p>' +
                 '<span class="badge ' + (esCritico ? 'bg-danger' : 'bg-success') + '" style="font-size:0.6rem;font-weight:600;">Stock: ' + p.cantidad + '</span>' +
                 '<div class="button-group-index mt-2">' +
                 '<a href="/producto/' + p.id + '" class="btn-detail"><i class="bi bi-eye"></i> Ver</a>' +

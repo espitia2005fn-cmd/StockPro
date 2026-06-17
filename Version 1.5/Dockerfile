@@ -10,6 +10,8 @@ COPY . .
 EXPOSE 5000
 
 ENV FLASK_DEBUG=0
-ENV SECRET_KEY=change-this-in-production
+# ⚠️ IMPORTANTE: Define SECRET_KEY como variable de entorno al ejecutar el contenedor
+# docker run -e SECRET_KEY="clave-segura-aqui" -p 5000:5000 stockpro
+# Si no se define, Flask generará una automáticamente con os.urandom(24).hex()
 
 CMD ["python", "run.py"]

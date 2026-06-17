@@ -519,7 +519,7 @@ body, p, .product-code, .text-muted, small, .stock-good, .stock-low {
 
 /* ========== BOTONES ========== */
 .btn-cart {
-    background: var(--gray-600);
+    background: var(--secondary-color);
     color: white;
     border: none;
     padding: 10px 18px;
@@ -536,14 +536,14 @@ body, p, .product-code, .text-muted, small, .stock-good, .stock-low {
 }
 
 .btn-cart:hover {
-    background: #495057;
+    background: var(--dark-bg);
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     color: white;
 }
 
 .btn-detail {
-    background: #333;
+    background: var(--primary-color);
     color: white;
     border: none;
     padding: 10px 18px;
@@ -560,7 +560,7 @@ body, p, .product-code, .text-muted, small, .stock-good, .stock-low {
 }
 
 .btn-detail:hover {
-    background: var(--gray-600);
+    background: var(--primary-dark);
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     color: white;
