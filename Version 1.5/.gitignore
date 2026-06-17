@@ -11,5 +11,8 @@ check_db.py
 data/sesion_resumen.md
 data/mantenimiento.txt
 data/ultimo_backup.txt
+node_modules/
+package.json
+package-lock.json
 .DS_Store
 Thumbs.db
