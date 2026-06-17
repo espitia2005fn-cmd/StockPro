@@ -2226,6 +2226,11 @@ def api_alertas_inteligentes():
 
 # ========== BASE DE DATOS (VISOR GENERAL) ==========
 
+@app.route('/admin/reportes')
+@admin_required
+def admin_reportes():
+    return render_template('reportes.html', usuario=session.get('nombre'), rol=session.get('rol'))
+
 @app.route('/admin/basedatos')
 @admin_required
 def admin_basedatos():
@@ -2516,8 +2521,8 @@ def ml_prediccion_ventas():
     datos = cursor.fetchall()
     conn.close()
 
-    if len(datos) < 30:
-        return jsonify({'error': 'Se necesitan al menos 30 días de datos'})
+    if len(datos) < 7:
+        return jsonify({'error': 'Se necesitan al menos 7 días de datos para generar predicciones'})
 
     df = pd.DataFrame(datos, columns=['fecha', 'ventas'])
     df['fecha'] = pd.to_datetime(df['fecha'])
@@ -2526,12 +2531,13 @@ def ml_prediccion_ventas():
     df['mes'] = df['fecha'].dt.month
     df['semana'] = df['fecha'].dt.isocalendar().week
 
-    for i in range(1, 8):
+    lag_dias = min(7, max(1, len(datos) // 2))
+    for i in range(1, lag_dias + 1):
         df[f'ventas_dia_{i}'] = df['ventas'].shift(i)
 
     df = df.dropna()
 
-    feature_cols = ['dia_semana', 'dia_mes', 'mes', 'semana'] + [f'ventas_dia_{i}' for i in range(1, 8)]
+    feature_cols = ['dia_semana', 'dia_mes', 'mes', 'semana'] + [f'ventas_dia_{i}' for i in range(1, lag_dias + 1)]
     X = df[feature_cols].values
     y = df['ventas'].values
 
