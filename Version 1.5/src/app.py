@@ -280,7 +280,7 @@ def api_inventario():
         if fecha_reg:
             try:
                 fechan = datetime.strptime(fecha_reg, '%Y-%m-%d %H:%M:%S') if ' ' in str(fecha_reg) else datetime.strptime(fecha_reg, '%Y-%m-%d')
-                es_nuevo = (datetime.now() - fechan).total_seconds() < 604800  # 7 dias
+                es_nuevo = (datetime.now() - fechan).total_seconds() < 259200  # 3 dias
             except: pass
         inventario.append({
             'id': row[0], 'codigo': row[1], 'nombre': row[2],
@@ -306,7 +306,7 @@ def api_inventario_por_categoria(categoria):
         if fecha_reg:
             try:
                 fechan = datetime.strptime(fecha_reg, '%Y-%m-%d %H:%M:%S') if ' ' in str(fecha_reg) else datetime.strptime(fecha_reg, '%Y-%m-%d')
-                es_nuevo = (datetime.now() - fechan).total_seconds() < 604800  # 7 dias
+                es_nuevo = (datetime.now() - fechan).total_seconds() < 259200  # 3 dias
             except: pass
         inventario.append({
             'id': row[0], 'codigo': row[1], 'nombre': row[2],
