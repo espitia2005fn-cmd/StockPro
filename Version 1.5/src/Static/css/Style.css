@@ -38,6 +38,20 @@
     --table-hover: rgba(230,57,70,0.05);
     --input-bg: #ffffff;
     --input-border: #dee2e6;
+    
+    /* Variables de color faltantes (usadas en templates publicos) */
+    --error-500: #e63946;
+    --error-600: #c1121f;
+    --error-50: #fef2f2;
+    --success-500: #28a745;
+    --success-600: #1e7e34;
+    --success-50: #e8fce8;
+    --warning-500: #ffc107;
+    --warning-600: #e0a800;
+    --gray-300: #ced4da;
+    --gray-400: #adb5bd;
+    --gray-600: #475467;
+    --gray-dark: #343a40;
 }
 
 [data-theme="dark"] {
@@ -90,6 +104,7 @@ body, p, .product-code, .text-muted, small, .stock-good, .stock-low {
     font-weight: 700;
     color: var(--primary-color);
     letter-spacing: 1px;
+    font-family: 'Outfit', 'Segoe UI', sans-serif;
 }
 
 .section-title {

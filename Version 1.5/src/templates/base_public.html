@@ -176,20 +176,22 @@ function actualizarBadgeCarrito() {
     fetch('/api/carrito/ver', {method:'GET'})
     .then(r=>r.json())
     .then(data=>{
-        const badge = document.querySelector('.btn-outline-light .badge');
         const count = data.carrito ? data.carrito.length : 0;
-        if (badge) {
-            if (count > 0) badge.textContent = count;
-            else badge.remove();
-        } else if (count > 0) {
-            const btn = document.querySelector('.btn-outline-light');
-            if (btn) {
-                const b = document.createElement('span');
-                b.className = 'position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger';
-                b.style.cssText = 'font-size:10px;';
-                b.textContent = count;
-                btn.appendChild(b);
+        const badgeNav = document.querySelector('.btn-nav .badge-nav');
+        if (count > 0) {
+            if (badgeNav) {
+                badgeNav.textContent = count;
+            } else {
+                const btn = document.querySelector('.btn-nav');
+                if (btn) {
+                    const b = document.createElement('span');
+                    b.className = 'badge-nav';
+                    b.textContent = count;
+                    btn.appendChild(b);
+                }
             }
+        } else if (badgeNav) {
+            badgeNav.remove();
         }
     })
     .catch(()=>{});

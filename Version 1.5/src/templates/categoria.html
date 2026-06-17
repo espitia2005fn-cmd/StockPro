@@ -155,12 +155,13 @@ function mostrarProductos(productos) {
         html += `
         <div class="col-6 col-md-4 col-lg-3 mb-4">
             <div class="product-card">
-                <div class="product-image">
+                <div class="product-image" style="position:relative;">
+                    ${p.es_nuevo ? '<div style="position:absolute;top:8px;right:8px;z-index:5;background:linear-gradient(135deg,#ff6b35,#e63946);color:#fff;font-size:0.55rem;font-weight:800;text-transform:uppercase;padding:3px 10px;border-radius:4px;box-shadow:0 2px 8px rgba(230,57,70,0.35);">Nuevo</div>' : ''}
                     <img src="${imagenUrl}" alt="${p.nombre}" onerror="this.src='https://cdn-icons-png.flaticon.com/512/109/109869.png'">
                 </div>
                 <div class="product-info">
                     <div class="product-code">${p.codigo}</div>
-                    <div class="product-name">${p.nombre}${p.es_nuevo ? ' <span class="badge bg-success" style="font-size:0.55rem;vertical-align:middle;">NUEVO</span>' : ''}</div>
+                    <div class="product-name">${p.nombre}</div>
                     <div class="product-price">$${p.precio.toLocaleString()}</div>
                     <div class="mb-2"><span class="${esCritico ? 'stock-low' : 'stock-good'}">${esCritico ? p.cantidad+' und' : p.cantidad+' disp'}</span></div>
                     <div class="button-group">
