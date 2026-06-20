@@ -243,18 +243,6 @@ window.addEventListener('resize', function() {
     });
 });
 
-function mostrarNotificacion(mensaje, esError = false) {
-    const toast = document.createElement('div');
-    toast.className = 'notif-toast' + (esError ? ' error' : '');
-    toast.innerHTML = `<i class="bi ${esError ? 'bi-x-circle-fill' : 'bi-check-circle-fill'}"></i> ${mensaje}`;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.classList.add('show'), 10);
-    setTimeout(() => {
-        toast.classList.remove('show');
-        setTimeout(() => toast.remove(), 300);
-    }, 2500);
-}
-
 async function cargarTodo() {
     const dias = document.getElementById('periodo').value;
 

@@ -39,7 +39,7 @@ def client():
 def test_carrito_agregar_precio_validado(client):
     """El precio debe venir de la BD, no del cliente"""
     resp = client.post('/api/carrito/agregar', json={
-        'id': 501, 'nombre': 'test', 'precio': 1, 'cantidad': 1
+        'id': 1, 'nombre': 'test', 'precio': 1, 'cantidad': 1
     })
     data = resp.get_json()
     assert data.get('success') is True
@@ -49,7 +49,7 @@ def test_carrito_agregar_precio_validado(client):
     assert len(data2['carrito']) > 0
     item = data2['carrito'][0]
     assert item['precio'] != 1
-    assert item['precio'] == 32998.0
+    assert item['precio'] == 45000.0
 
 
 def test_carrito_agregar_producto_inexistente(client):

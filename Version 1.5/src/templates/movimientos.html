@@ -220,18 +220,6 @@ function filtrarCategoria(el, categoria) {
     aplicarFiltros();
 }
 
-function mostrarNotificacion(mensaje, esError) {
-    var toast = document.createElement('div');
-    toast.className = 'notif-toast' + (esError ? ' error' : '');
-    toast.innerHTML = '<i class="bi ' + (esError ? 'bi-x-circle-fill' : 'bi-check-circle-fill') + '"></i> ' + mensaje;
-    document.body.appendChild(toast);
-    setTimeout(function() { toast.classList.add('show'); }, 10);
-    setTimeout(function() {
-        toast.classList.remove('show');
-        setTimeout(function() { toast.remove(); }, 300);
-    }, 2500);
-}
-
 async function cargarMovimientos() {
     try {
         const res = await fetch('/api/movimientos');

@@ -237,7 +237,7 @@ def crear_tablas():
     # Crear usuario admin por defecto si no existe
     cursor.execute("SELECT id FROM usuarios WHERE username = 'admin'")
     if not cursor.fetchone():
-        admin_password_hash = hash_password('admin123')
+        admin_password_hash = hash_password(os.environ.get('ADMIN_PASSWORD', 'admin123'))
         cursor.execute('''INSERT INTO usuarios (username, password, nombre, email, rol, activo) 
                           VALUES (?, ?, ?, ?, ?, ?)''', 
                           ('admin', admin_password_hash, 'Administrador', 'admin@stockpro.com', 'administrador', 1))

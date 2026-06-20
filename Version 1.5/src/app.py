@@ -18,6 +18,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 import threading
 import shutil
+import re
 
 app = Flask(__name__, static_folder='Static', static_url_path='/static')
 app.secret_key = os.environ.get('SECRET_KEY', os.urandom(24).hex())
@@ -27,7 +28,7 @@ csrf = CSRFProtect(app)
 
 # CORS configuration
 from flask_cors import CORS
-ALLOWED_ORIGINS = os.environ.get('CORS_ORIGINS', 'http://localhost:5000').split(',')
+ALLOWED_ORIGINS = os.environ.get('CORS_ORIGINS', '*').split(',')
 CORS(app, origins=ALLOWED_ORIGINS, supports_credentials=True,
      allow_headers=['Content-Type', 'X-CSRFToken'],
      methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'])
@@ -43,7 +44,7 @@ limiter = Limiter(
 # Session security
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Strict'
-app.config['SESSION_COOKIE_SECURE'] = os.environ.get('FORCE_HTTPS', '1') == '1'
+app.config['SESSION_COOKIE_SECURE'] = os.environ.get('FORCE_HTTPS', '0') == '1'
 app.config['SESSION_PERMANENT'] = True
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)
 
@@ -390,7 +391,6 @@ def confirmar_pedido():
         cliente_telefono = usuario[5] if usuario and len(usuario) > 5 else ''
         cliente_direccion = usuario[6] if usuario and len(usuario) > 6 else ''
     else:
-        import re
         usuario_id = None
         cliente_nombre = request.form.get('cliente_nombre', '').strip()
         cliente_email = request.form.get('cliente_email', '').strip()
@@ -2284,7 +2284,7 @@ def admin_basedatos():
     return render_template('admin_basedatos.html', usuario=session.get('nombre'), rol=session.get('rol'))
 
 @app.route('/api/basedatos')
-@limiter.limit("3 per minute", override_defaults=False)
+@limiter.limit("15 per minute", override_defaults=False)
 @admin_required
 def api_basedatos():
     try:
@@ -2363,7 +2363,6 @@ def registrar_usuario():
             flash(' La contraseña debe tener al menos 8 caracteres', 'error')
             return redirect(url_for('registrar_usuario'))
 
-        import re
         if email and not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', email):
             flash(' Correo electrónico inválido', 'error')
             return redirect(url_for('registrar_usuario'))
