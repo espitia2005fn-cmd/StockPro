@@ -60,9 +60,23 @@ Version 1.5/
 - Node.js v24.16.0 / npm 11.13.0
 - opencode-mobile plugin instalado para conectar iPhone via OpenLens
 
+### Mobile QR - Conexion iPhone
+- **Conexion local (WiFi directa)**: NO funciono (probable client isolation del router)
+- **localtunnel**: Funciona pero da 502/503 con Flask (no recomendado)
+- **cloudflared**: FUNCIONA. Comando: `npx cloudflared tunnel --url http://localhost:5000`
+- Regla Firewall creada: `StockPro 5000 TCP` (puerto 5000 abierto)
+- Red WiFi cambiada a **Privada** para mejor conectividad
+- **PENDIENTE**: Probar QR con cloudflared:
+  - `npx opencode-mobile qr <path-to-tunnel.json>` o `mobile` tool con URL
+  - iOS OpenLens escanea URL publica de cloudflared
+- Archivo temporal: `Version 1.5/mobile-qr.png` (QR de IP local - NO funciona)
+- QR funcional guardado: `Version 1.5/mobile-qr-cloudflare.png` (usar con cloudflared activo)
+- URL cloudflared ultima: `https://corporation-euro-medications-mono.trycloudflare.com` (cambia cada vez)
+
 ### Comandos Importantes
 - `/mobile` - Genera QR para conectar iPhone con OpenLens
 - `npx opencode-mobile qr <file>` - QR desde terminal
 - Server: `cd "Version 1.5"; flask run --host=0.0.0.0 --port=5000 --reload`
 - Seed: `cd "Version 1.5"; python scripts/seed_reales.py`
 - Tests: `cd "Version 1.5"; pytest`
+- Cloudflared tunnel: `npx cloudflared tunnel --url http://localhost:5000`
