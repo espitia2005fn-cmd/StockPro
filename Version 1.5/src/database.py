@@ -86,25 +86,16 @@ def crear_tablas():
     )''')
 
     # Migración segura para bases existentes
-    try:
-        cursor.execute("ALTER TABLE usuarios ADD COLUMN telefono TEXT")
-    except sqlite3.OperationalError:
-        pass
-    try:
-        cursor.execute("ALTER TABLE usuarios ADD COLUMN direccion TEXT")
-    except sqlite3.OperationalError:
-        pass
-    try:
-        cursor.execute("ALTER TABLE usuarios ADD COLUMN foto_perfil TEXT DEFAULT ''")
-    except sqlite3.OperationalError:
-        pass
-    try:
-        cursor.execute("ALTER TABLE usuarios ADD COLUMN ultimo_acceso TIMESTAMP")
-    except sqlite3.OperationalError:
-        pass
+    for col, tipo in [('telefono', 'TEXT'), ('direccion', 'TEXT'),
+                      ('foto_perfil', "TEXT DEFAULT ''"),
+                      ('ultimo_acceso', 'TIMESTAMP')]:
+        try:
+            cursor.execute(f"ALTER TABLE usuarios ADD COLUMN {col} {tipo}")
+        except Exception:
+            pass
     try:
         cursor.execute("ALTER TABLE repuestos ADD COLUMN costo REAL DEFAULT 0")
-    except sqlite3.OperationalError:
+    except Exception:
         pass
     
     # Tabla ventas (sistema anterior)
@@ -688,8 +679,13 @@ def get_config(clave, default=''):
 def set_config(clave, valor):
     conn = obtener_conexion()
     cursor = conn.cursor()
-    cursor.execute("INSERT OR REPLACE INTO config (clave, valor, tipo) VALUES (?, ?, COALESCE((SELECT tipo FROM config WHERE clave = ?), 'text'))",
-                   (clave, valor, clave))
+    # Guardar tipo actual antes de modificar
+    cursor.execute("SELECT tipo FROM config WHERE clave = ?", (clave,))
+    row = cursor.fetchone()
+    tipo_actual = row[0] if row else 'text'
+    cursor.execute("DELETE FROM config WHERE clave = ?", (clave,))
+    cursor.execute("INSERT INTO config (clave, valor, tipo) VALUES (?, ?, ?)",
+                   (clave, valor, tipo_actual))
     conn.commit()
     conn.close()
 

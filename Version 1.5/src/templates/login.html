@@ -41,11 +41,5 @@
 {% endblock %}
 
 {% block extra_js %}
-{% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-        {% for category, message in messages %}
-            mostrarToast({{ message|tojson|safe }}, {{ ("error" if category == "error" else "success")|tojson|safe }});
-        {% endfor %}
-    {% endif %}
-{% endwith %}
+
 {% endblock %}

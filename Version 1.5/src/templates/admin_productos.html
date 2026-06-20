@@ -8,13 +8,7 @@
     <a href="/admin/registro" class="btn btn-primary"><i class="bi bi-plus-circle"></i> Nuevo Producto</a>
 </div>
 
-{% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-        {% for category, message in messages %}
-            <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show">{{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
-        {% endfor %}
-    {% endif %}
-{% endwith %}
+
 
 <!-- FILTROS POR CATEGORÍA -->
 <div class="card p-3 mb-4">

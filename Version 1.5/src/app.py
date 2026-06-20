@@ -1,5 +1,5 @@
 from flask import Flask, render_template, jsonify, request, redirect, url_for, flash, session, make_response, send_file
-from werkzeug.utils import secure_filename
+from werkzeug.utils import secure_filename, safe_join
 from html import escape
 import sqlite3
 import os
@@ -27,7 +27,7 @@ csrf = CSRFProtect(app)
 
 # CORS configuration
 from flask_cors import CORS
-ALLOWED_ORIGINS = os.environ.get('CORS_ORIGINS', '*').split(',')
+ALLOWED_ORIGINS = os.environ.get('CORS_ORIGINS', 'http://localhost:5000').split(',')
 CORS(app, origins=ALLOWED_ORIGINS, supports_credentials=True,
      allow_headers=['Content-Type', 'X-CSRFToken'],
      methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'])
@@ -43,7 +43,7 @@ limiter = Limiter(
 # Session security
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Strict'
-app.config['SESSION_COOKIE_SECURE'] = os.environ.get('FORCE_HTTPS', '0') == '1'
+app.config['SESSION_COOKIE_SECURE'] = os.environ.get('FORCE_HTTPS', '1') == '1'
 app.config['SESSION_PERMANENT'] = True
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)
 
@@ -190,8 +190,14 @@ def validar_captcha(respuesta):
     if not CAPTCHA_ENABLED:
         return True
     try:
-        return int(respuesta) == session.pop('_captcha', None)
+        expected = session.get('_captcha')
+        if expected is None:
+            return False
+        result = int(respuesta) == expected
+        session.pop('_captcha', None)
+        return result
     except (ValueError, TypeError):
+        session.pop('_captcha', None)
         return False
 
 # ========== SEGURIDAD: INACTIVIDAD ==========
@@ -395,6 +401,12 @@ def confirmar_pedido():
             flash('Correo electrónico inválido', 'danger')
             return redirect(url_for('pago'))
 
+        if len(cliente_nombre) > MAX_LEN['nombre'] or \
+           len(cliente_telefono) > MAX_LEN['telefono'] or \
+           len(cliente_direccion) > MAX_LEN['direccion']:
+            flash('Uno o más campos superan la longitud máxima permitida', 'danger')
+            return redirect(url_for('pago'))
+
     if not cliente_nombre or not cliente_email:
         flash('Por favor complete sus datos de contacto', 'danger')
         return redirect(url_for('pago'))
@@ -558,7 +570,11 @@ def carrito_agregar():
 def carrito_actualizar():
     data = request.get_json()
     producto_id = data.get('id')
-    cantidad = data.get('cantidad')
+    if not isinstance(producto_id, (int, float)):
+        return jsonify({'success': False, 'error': 'ID inválido'}), 400
+    cantidad = int(data.get('cantidad', 1))
+    if cantidad < 0:
+        return jsonify({'success': False, 'error': 'Cantidad inválida'}), 400
     carrito = session.get('carrito', [])
     for i, item in enumerate(carrito):
         if item['id'] == producto_id:
@@ -576,6 +592,8 @@ def carrito_actualizar():
 def carrito_eliminar():
     data = request.get_json()
     producto_id = data.get('id')
+    if not isinstance(producto_id, (int, float)):
+        return jsonify({'success': False, 'error': 'ID inválido'}), 400
     carrito = session.get('carrito', [])
     carrito = [item for item in carrito if item['id'] != producto_id]
     session['carrito'] = carrito
@@ -861,7 +879,7 @@ def reset_password(token):
             db.actualizar_password(usuario[0], nueva)
             flash(' Contraseña actualizada correctamente', 'success')
             return redirect(url_for('login'))
-        flash(' La contraseña debe tener al menos 4 caracteres', 'error')
+        flash(' La contraseña debe tener al menos 8 caracteres', 'error')
     
     return render_template('cambiar_pass.html', token=token)
 
@@ -973,7 +991,8 @@ def admin_usuario_editar(id):
         db.actualizar_usuario(id, nombre, email, rol, activo, foto_perfil)
         flash(' Usuario actualizado', 'success')
     except Exception as e:
-        flash(f'Error: {str(e)}', 'error')
+        app.logger.error(f"Error al actualizar usuario: {e}")
+        flash('Error al actualizar usuario', 'error')
     return redirect(url_for('admin_usuarios'))
 
 @app.route('/admin/usuario/eliminar/<int:id>', methods=['POST'])
@@ -1173,7 +1192,8 @@ def admin_cliente_editar(id):
         
         flash('Cliente actualizado correctamente', 'success')
     except Exception as e:
-        flash(f'Error: {str(e)}', 'danger')
+        app.logger.error(f"Error al actualizar cliente: {e}")
+        flash('Error al actualizar cliente', 'danger')
     
     return redirect(url_for('admin_clientes'))
 
@@ -1185,7 +1205,8 @@ def admin_cliente_eliminar(id):
         db.eliminar_usuario(id)
         flash('Cliente eliminado correctamente', 'success')
     except Exception as e:
-        flash(f'Error al eliminar: {str(e)}', 'danger')
+        app.logger.error(f"Error al eliminar cliente: {e}")
+        flash('Error al eliminar cliente', 'danger')
     return redirect(url_for('admin_clientes'))
 
 @app.route('/admin/ordenes')
@@ -1237,7 +1258,8 @@ def api_obtener_producto(id):
             })
         return jsonify({'error': 'Producto no encontrado'}), 404
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        app.logger.error(f"Error en /api/producto/<id> GET: {e}")
+        return jsonify({'error': 'Error interno del servidor'}), 500
 
 @app.route('/api/producto/<int:id>', methods=['PUT'])
 @limiter.limit("30 per minute", override_defaults=False)
@@ -1256,7 +1278,9 @@ def api_actualizar_producto(id):
         cantidad_vieja = viejo[0]
         precio = viejo[1]
         nombre = viejo[2]
-        cantidad_nueva = int(data.get('cantidad', cantidad_vieja))
+        cantidad_nueva = max(0, int(data.get('cantidad', cantidad_vieja)))
+        data['precio'] = max(0, float(data.get('precio', precio)))
+        data['stock_minimo'] = max(0, int(data.get('stock_minimo', 0)))
         
         cursor.execute('''UPDATE repuestos 
             SET codigo = ?, nombre = ?, categoria = ?, cantidad = ?, precio = ?, stock_minimo = ?, ubicacion = ?, proveedor = ?, imagen = ?,
@@ -1286,7 +1310,8 @@ def api_actualizar_producto(id):
 
         return jsonify({'success': True, 'mensaje': 'Producto actualizado'})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        app.logger.error(f"Error en /api/producto/<id> PUT: {e}")
+        return jsonify({'error': 'Error interno del servidor'}), 500
 
 # ========== API ADMIN ==========
 @app.route('/api/estadisticas/admin')
@@ -1296,6 +1321,7 @@ def api_estadisticas_admin():
 
 @app.route('/api/dashboard')
 @app.route('/api/dashboard/resumen')
+@limiter.limit("30 per minute", override_defaults=False)
 @admin_required
 def api_dashboard_resumen():
     """Resumen ejecutivo para el Panel General"""
@@ -1352,6 +1378,7 @@ def api_dashboard_resumen():
     return jsonify(data)
 
 @app.route('/api/dashboard/detalle/ventas_hoy')
+@limiter.limit("30 per minute", override_defaults=False)
 @admin_required
 def api_dashboard_ventas_hoy():
     cached = db.cache_get('api_detalle_ventas_hoy')
@@ -1371,6 +1398,7 @@ def api_dashboard_ventas_hoy():
     return jsonify(data)
 
 @app.route('/api/dashboard/detalle/ventas_mes')
+@limiter.limit("30 per minute", override_defaults=False)
 @admin_required
 def api_dashboard_ventas_mes():
     cached = db.cache_get('api_detalle_ventas_mes')
@@ -1396,6 +1424,7 @@ def api_dashboard_ventas_mes():
     return jsonify(data)
 
 @app.route('/api/dashboard/detalle/stock_critico')
+@limiter.limit("30 per minute", override_defaults=False)
 @admin_required
 def api_dashboard_stock_critico():
     cached = db.cache_get('api_detalle_stock_critico')
@@ -1416,6 +1445,7 @@ def api_dashboard_stock_critico():
     return jsonify(data)
 
 @app.route('/api/dashboard/detalle/salud_stock')
+@limiter.limit("30 per minute", override_defaults=False)
 @admin_required
 def api_dashboard_salud_stock():
     cached = db.cache_get('api_detalle_salud_stock')
@@ -1447,6 +1477,7 @@ def api_dashboard_salud_stock():
     return jsonify(data)
 
 @app.route('/api/dashboard/detalle/clientes_nuevos')
+@limiter.limit("30 per minute", override_defaults=False)
 @admin_required
 def api_dashboard_clientes_nuevos():
     cached = db.cache_get('api_detalle_clientes_nuevos')
@@ -1545,8 +1576,8 @@ def api_movimientos():
             })
         return jsonify(movimientos)
     except Exception as e:
-        print(f"ERROR en /api/movimientos: {e}")
-        return jsonify({'error': 'Error al cargar movimientos', 'detalle': str(e)}), 500
+        app.logger.error(f"Error en /api/movimientos: {e}")
+        return jsonify({'error': 'Error al cargar movimientos'}), 500
 
 @app.route('/api/guardar', methods=['POST'])
 @limiter.limit("30 per minute", override_defaults=False)
@@ -1557,13 +1588,13 @@ def api_guardar():
         nombre = request.form.get('nombre')
         categoria = request.form.get('categoria')
         cantidad_str = request.form.get('cantidad', '0').strip()
-        cantidad = int(cantidad_str) if cantidad_str else 0
+        cantidad = max(0, int(cantidad_str) if cantidad_str else 0)
         precio_str = request.form.get('precio', '0').strip()
-        precio = float(precio_str) if precio_str else 0
+        precio = max(0, float(precio_str) if precio_str else 0)
         costo_str = request.form.get('costo', '0').strip()
-        costo = float(costo_str) if costo_str else 0
+        costo = max(0, float(costo_str) if costo_str else 0)
         stock_minimo_str = request.form.get('stock_minimo', '5').strip()
-        stock_minimo = int(stock_minimo_str) if stock_minimo_str else 5
+        stock_minimo = max(0, int(stock_minimo_str) if stock_minimo_str else 5)
         ubicacion = request.form.get('ubicacion', '')
         proveedor = request.form.get('proveedor', '')
         descripcion = request.form.get('descripcion', '')
@@ -1623,7 +1654,8 @@ def api_guardar():
         return redirect(url_for('admin_productos'))
         
     except Exception as e:
-        flash(f'Error: {str(e)}', 'error')
+        app.logger.error(f"Error al registrar producto: {e}")
+        flash('Error al registrar producto', 'error')
         return redirect(url_for('admin_registro'))
 
 def guardar_imagen(file):
@@ -1677,7 +1709,8 @@ def api_subir_imagen():
 
         return jsonify({'success': True, 'filename': saved_name})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        app.logger.error(f"Error en /api/guardar imagen: {e}")
+        return jsonify({'success': False, 'error': 'Error al guardar la imagen'}), 500
 
 @app.route('/api/actualizar/<int:id>', methods=['PUT'])
 @limiter.limit("30 per minute", override_defaults=False)
@@ -1686,8 +1719,10 @@ def api_actualizar(id):
     try:
         data = request.get_json()
         tipo = data.get('tipo')
-        cantidad = int(data.get('cantidad'))
-        motivo = data.get('motivo', '')
+        cantidad = max(0, int(data.get('cantidad', 0)))
+        if cantidad <= 0:
+            return jsonify({'error': 'La cantidad debe ser mayor a 0'}), 400
+        motivo = (data.get('motivo', '') or '')[:200]
         conn = get_db()
         cursor = conn.cursor()
         cursor.execute("SELECT cantidad, precio FROM repuestos WHERE id = ?", (id,))
@@ -1714,7 +1749,8 @@ def api_actualizar(id):
 
         return jsonify({'success': True})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        app.logger.error(f"Error en /api/actualizar stock: {e}")
+        return jsonify({'error': 'Error al actualizar el stock'}), 500
 
 @app.route('/api/eliminar/<int:id>', methods=['DELETE'])
 @limiter.limit("30 per minute", override_defaults=False)
@@ -1758,7 +1794,8 @@ def api_eliminar(id):
         return jsonify({'success': True, 'mensaje': f'Producto {nombre} eliminado'})
         
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        app.logger.error(f"Error en /api/eliminar: {e}")
+        return jsonify({'error': 'Error al eliminar el producto'}), 500
 
 # ========== SUCURSALES ==========
 # (Eliminado - no usado)
@@ -1768,7 +1805,7 @@ def api_eliminar(id):
 @app.route('/api/ventas/evolucion')
 @admin_required
 def api_ventas_evolucion():
-    dias = request.args.get('dias', 30, type=int)
+    dias = min(max(request.args.get('dias', 30, type=int) or 30, 1), 365)
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute('''
@@ -1828,6 +1865,7 @@ def api_productos_tendencias():
     return jsonify(resultado)
 
 @app.route('/api/analytics/clasificacion_abc')
+@limiter.limit("20 per minute", override_defaults=False)
 @admin_required
 def api_clasificacion_abc():
     conn = get_db()
@@ -1858,6 +1896,7 @@ def api_clasificacion_abc():
     return jsonify(resultado)
 
 @app.route('/api/analytics/sin_movimiento')
+@limiter.limit("20 per minute", override_defaults=False)
 @admin_required
 def api_sin_movimiento():
     conn = get_db()
@@ -1874,6 +1913,7 @@ def api_sin_movimiento():
     return jsonify([{'nombre': r[1], 'stock': r[2], 'precio': r[3], 'ultima_venta': r[4] or 'Nunca'} for r in rows])
 
 @app.route('/api/analytics/prediccion_demanda')
+@limiter.limit("20 per minute", override_defaults=False)
 @admin_required
 def api_prediccion_demanda():
     conn = get_db()
@@ -1908,6 +1948,7 @@ def api_prediccion_demanda():
     return jsonify(resultado)
 
 @app.route('/api/analytics/estacionalidad')
+@limiter.limit("20 per minute", override_defaults=False)
 @admin_required
 def api_estacionalidad():
     conn = get_db()
@@ -1940,6 +1981,7 @@ def api_estacionalidad():
 # ==================== NUEVOS ENDPOINTS PARA ANALÍTICA AVANZADA ====================
 
 @app.route('/api/analytics/rotacion_stock')
+@limiter.limit("20 per minute", override_defaults=False)
 @admin_required
 def api_rotacion_stock():
     conn = get_db()
@@ -1970,6 +2012,7 @@ def api_rotacion_stock():
     return jsonify({'dias_promedio': dias_rotacion})
 
 @app.route('/api/analytics/resumen_ventas')
+@limiter.limit("20 per minute", override_defaults=False)
 @admin_required
 def api_resumen_ventas():
     dias = request.args.get('dias', 30, type=int)
@@ -2023,6 +2066,7 @@ def api_resumen_ventas():
     })
 
 @app.route('/api/analytics/margen_promedio')
+@limiter.limit("20 per minute", override_defaults=False)
 @admin_required
 def api_margen_promedio():
     conn = get_db()
@@ -2053,6 +2097,7 @@ def api_margen_promedio():
     })
 
 @app.route('/api/analytics/rotacion_por_categoria')
+@limiter.limit("20 per minute", override_defaults=False)
 @admin_required
 def api_rotacion_por_categoria():
     conn = get_db()
@@ -2087,6 +2132,7 @@ def api_rotacion_por_categoria():
     return jsonify(resultado)
 
 @app.route('/api/analytics/estacionalidad_avanzada')
+@limiter.limit("20 per minute", override_defaults=False)
 @admin_required
 def api_estacionalidad_avanzada():
     conn = get_db()
@@ -2147,6 +2193,7 @@ def api_estacionalidad_avanzada():
     })
 
 @app.route('/api/analytics/alertas_inteligentes')
+@limiter.limit("20 per minute", override_defaults=False)
 @admin_required
 def api_alertas_inteligentes():
     conn = get_db()
@@ -2237,6 +2284,7 @@ def admin_basedatos():
     return render_template('admin_basedatos.html', usuario=session.get('nombre'), rol=session.get('rol'))
 
 @app.route('/api/basedatos')
+@limiter.limit("3 per minute", override_defaults=False)
 @admin_required
 def api_basedatos():
     try:
@@ -2287,8 +2335,8 @@ def api_basedatos():
             }
         })
     except Exception as e:
-        print(f"ERROR en /api/basedatos: {e}")
-        return jsonify({'error': str(e)}), 500
+        app.logger.error(f"Error en /api/basedatos: {e}")
+        return jsonify({'error': 'Error al obtener datos de la base de datos'}), 500
 
 # ========== REGISTRO DE NUEVOS USUARIOS ==========
 @app.route('/registrar_usuario', methods=['GET', 'POST'])
@@ -2313,6 +2361,11 @@ def registrar_usuario():
 
         if len(password) < 8:
             flash(' La contraseña debe tener al menos 8 caracteres', 'error')
+            return redirect(url_for('registrar_usuario'))
+
+        import re
+        if email and not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', email):
+            flash(' Correo electrónico inválido', 'error')
             return redirect(url_for('registrar_usuario'))
 
         conn = get_db()
@@ -2499,6 +2552,7 @@ def exportar_csv_completo():
 # ========== MACHINE LEARNING - PREDICCIÓN DE VENTAS ==========
 
 @app.route('/api/ml/prediccion_ventas')
+@limiter.limit("5 per minute", override_defaults=False)
 @admin_required
 def ml_prediccion_ventas():
     """Predice ventas para los próximos 30 días usando Regresión Lineal (cache 1h)"""
@@ -2568,6 +2622,7 @@ def ml_prediccion_ventas():
     return jsonify(result)
 
 @app.route('/api/ml/tendencias_productos')
+@limiter.limit("5 per minute", override_defaults=False)
 @admin_required
 def ml_tendencias_productos():
     cache = getattr(ml_tendencias_productos, 'cache', None)
@@ -2793,6 +2848,7 @@ def admin_mantenimiento():
 # ========== NOTIFICACIONES EN VIVO ==========
 
 @app.route('/api/notificaciones')
+@limiter.limit("20 per minute", override_defaults=False)
 @admin_required
 def api_notificaciones():
     try:
@@ -2806,7 +2862,8 @@ def api_notificaciones():
             'cantidad': r[3], 'stock_minimo': r[4]
         } for r in rows])
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        app.logger.error(f"Error en /api/notificaciones: {e}")
+        return jsonify({'error': 'Error al cargar notificaciones'}), 500
 
 @app.route('/api/ping', methods=['POST'])
 @limiter.limit("30 per minute", override_defaults=False)
@@ -2829,13 +2886,15 @@ def api_logout_now():
     return jsonify({'ok': True})
 
 @app.route('/api/usuarios_activos')
+@limiter.limit("10 per minute", override_defaults=False)
 @admin_required
 def api_usuarios_activos():
     try:
         activos = db.obtener_usuarios_activos(15)
         return jsonify(activos)
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        app.logger.error(f"Error en /api/usuarios_activos: {e}")
+        return jsonify({'error': 'Error al cargar usuarios activos'}), 500
 
 # ========== RESPALDOS AUTOMÁTICOS ==========
 
@@ -2871,8 +2930,8 @@ def crear_respaldo():
                     os.remove(fpath)
         return True, backup_path
     except Exception as e:
-        print(f"[BACKUP] Error: {e}")
-        return False, str(e)
+        app.logger.error(f"[BACKUP] Error al crear respaldo: {e}")
+        return False, "Error al crear el respaldo"
 
 def backup_thread():
     while True:
@@ -2918,7 +2977,8 @@ def api_respaldos():
             'total_respaldos': len(archivos)
         })
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        app.logger.error(f"Error en /api/respaldos: {e}")
+        return jsonify({'error': 'Error al listar respaldos'}), 500
 
 @app.route('/api/respaldos/crear', methods=['POST'])
 @limiter.limit("3 per minute", override_defaults=False)
@@ -2934,13 +2994,16 @@ def api_respaldos_crear():
 @admin_required
 def api_respaldos_descargar(filename):
     try:
-        fpath = os.path.join(BACKUP_DIR, filename)
-        if not os.path.exists(fpath):
+        fpath = safe_join(BACKUP_DIR, filename)
+        if not fpath or not os.path.exists(fpath):
             flash('Archivo no encontrado', 'error')
             return redirect(url_for('admin_respaldos'))
         return send_file(fpath, as_attachment=True, download_name=filename)
-    except Exception as e:
-        flash(f'Error: {str(e)}', 'error')
+    except (ValueError, FileNotFoundError):
+        flash('Archivo no encontrado', 'error')
+        return redirect(url_for('admin_respaldos'))
+    except Exception:
+        flash('Error al descargar el archivo', 'error')
         return redirect(url_for('admin_respaldos'))
 
 # ========== LOGS / ACTIVIDAD ==========

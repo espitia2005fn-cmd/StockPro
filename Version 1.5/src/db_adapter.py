@@ -30,7 +30,7 @@ class _PGConnection:
         import psycopg2
         import psycopg2.extras
         self._conn = psycopg2.connect(DATABASE_URL)
-        self._conn.autocommit = True
+        self._conn.autocommit = False
 
     def cursor(self):
         return _PGCursor(self._conn)
@@ -46,7 +46,12 @@ class _PGConnection:
         return cur
 
     def commit(self):
-        pass
+        if self._conn:
+            self._conn.commit()
+
+    def rollback(self):
+        if self._conn:
+            self._conn.rollback()
 
     def close(self):
         self._conn.close()
@@ -56,6 +61,16 @@ class _PGConnection:
         s = sql.strip()
         if s.upper().startswith('PRAGMA'):
             return 'SELECT 1'
+        s = re.sub(r"(?i)\bINSERT\s+OR\s+IGNORE\s+INTO\b",
+                    "INSERT INTO", s)
+        s = re.sub(r"(?i)\bINSERT\s+OR\s+REPLACE\s+INTO\b",
+                    "INSERT INTO", s)
+        s = re.sub(r"(?i)\bBEGIN\s+IMMEDIATE\b",
+                    "BEGIN", s)
+        s = re.sub(r"datetime\('now',\s*'([-+])\s*'\s*\|\|\s*\?\s*\|\|\s*'\s*(\w+)'\s*\)",
+                   r"CURRENT_TIMESTAMP \1 INTERVAL '1 \2' * %s", s)
+        s = re.sub(r"datetime\('now'(?:,\s*'([^']+)')?\)",
+                   r"CURRENT_TIMESTAMP", s)
         s = re.sub(r"date\('now',\s*'start\s+of\s+month'\)",
                     "date_trunc('month', CURRENT_DATE)::date", s)
         s = re.sub(r"date\('now',\s*'(-?\d+)\s+months'\)",

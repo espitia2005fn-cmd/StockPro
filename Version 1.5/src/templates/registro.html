@@ -134,13 +134,6 @@
     <a href="/admin/productos" class="btn btn-secondary btn-sm"><i class="bi bi-arrow-left"></i> Volver</a>
 </div>
 
-{% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-        {% for category, message in messages %}
-            <div class="alert alert-{{ 'error' if category == 'error' else 'success' }} mb-4">{{ message }}</div>
-        {% endfor %}
-    {% endif %}
-{% endwith %}
 
 <div class="steps" id="stepsIndicator">
     <div class="step active" data-step="1">
