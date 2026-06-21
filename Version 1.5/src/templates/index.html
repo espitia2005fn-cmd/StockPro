@@ -430,9 +430,9 @@ async function cargarIndex() {
                 '<small class="text-muted" style="font-size:0.7rem;">' + p.codigo + '</small>' +
                 '<p class="fw-bold mt-2 mb-2" style="font-size:1.1rem;color:var(--primary-color);">$' + p.precio.toLocaleString() + '</p>' +
                 '<span class="badge ' + (esCritico ? 'bg-danger' : 'bg-success') + '" style="font-size:0.6rem;font-weight:600;">Stock: ' + p.cantidad + '</span>' +
-                '<div class="button-group-index mt-2">' +
+                '<div class="button-group mt-2">' +
                 '<a href="/producto/' + p.id + '" class="btn-detail"><i class="bi bi-eye"></i> Ver</a>' +
-                '<button class="btn-cart-index" onclick="agregarAlCarrito(' + p.id + ", '" + nombreEscapado + "', " + p.precio + ", '" + img + "', '" + p.categoria + "', this)" + '><i class="bi bi-cart-plus"></i> Agregar</button>' +
+                '<button class="btn-cart" onclick="agregarAlCarrito(' + p.id + ", '" + nombreEscapado + "', " + p.precio + ", '" + img + "', '" + p.categoria + "', this)" + '><i class="bi bi-cart-plus"></i> Agregar</button>' +
                 '</div></div></div></div>';
         }
         document.getElementById('products-grid').innerHTML = html;
