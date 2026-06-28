@@ -189,12 +189,9 @@ def admin_required(f):
     return decorated_function
 
 # ========== SEGURIDAD: CAPTCHA ==========
-CAPTCHA_ENABLED = os.environ.get('CAPTCHA_ENABLED', '1') != '0'
+CAPTCHA_ENABLED = os.environ.get('CAPTCHA_ENABLED', '') != '0'
 
 def generar_captcha():
-    if not CAPTCHA_ENABLED:
-        session['_captcha'] = 0
-        return ''
     a = random.randint(1, 20)
     b = random.randint(1, 20)
     op = random.choice(['+', '-'])
