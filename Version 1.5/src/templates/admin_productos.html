@@ -156,10 +156,10 @@ function mostrarProductos(productos) {
             <div class="card h-100">
                 <div class="card-body">
                     <div class="d-flex align-items-center gap-3 mb-2">
-                        <img src="${imgUrl}" alt="${p.nombre}" style="width:50px;height:50px;object-fit:cover;border-radius:10px;border:1px solid var(--gray-200);flex-shrink:0;" onerror="this.src='https://via.placeholder.com/50/464fff/ffffff?text=IMG'">
+                        <img src="${imgUrl}" alt="${escHtml(p.nombre)}" style="width:50px;height:50px;object-fit:cover;border-radius:10px;border:1px solid var(--gray-200);flex-shrink:0;" onerror="this.src='https://via.placeholder.com/50/464fff/ffffff?text=IMG'">
                         <div class="min-width-0">
-                            <h6 class="card-title mb-0">${p.nombre}${p.es_nuevo ? ' <span class="badge bg-success" style="font-size:0.55rem;vertical-align:middle;">NUEVO</span>' : ''}</h6>
-                            <small class="text-muted">${p.codigo}</small>
+                            <h6 class="card-title mb-0">${escHtml(p.nombre)}${p.es_nuevo ? ' <span class="badge bg-success" style="font-size:0.55rem;vertical-align:middle;">NUEVO</span>' : ''}</h6>
+                            <small class="text-muted">${escHtml(p.codigo)}</small>
                         </div>
                     </div>
                     <p class="mb-1"><strong>Precio:</strong> $${p.precio.toLocaleString()}</p>
@@ -168,7 +168,7 @@ function mostrarProductos(productos) {
                     <p class="mb-2"><small><strong>Proveedor:</strong> ${p.proveedor || 'N/A'}</small></p>
                     <div class="d-flex gap-2 mt-3">
                         <button class="btn btn-sm flex-fill" style="background:var(--gray-600);color:white;border:none;" onclick="abrirEditar(${p.id})"><i class="bi bi-pencil"></i> Editar</button>
-                        <button class="btn btn-sm btn-danger flex-fill" onclick="eliminarProducto(${p.id}, '${p.nombre.replace(/'/g, "\\'")}')"><i class="bi bi-trash"></i> Eliminar</button>
+                        <button class="btn btn-sm btn-danger flex-fill" onclick="eliminarProducto(${p.id}, '${escHtml(p.nombre).replace(/'/g, "\\'").replace(/"/g, "&quot;")}')"><i class="bi bi-trash"></i> Eliminar</button>
                     </div>
                 </div>
             </div>

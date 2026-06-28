@@ -5,9 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>StockPro | {% block titulo %}{{ config.get('empresa_nombre', 'Celeris Moto Express') }}{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/Style.css') }}">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 36 36'><rect x='6' y='6' width='24' height='24' rx='4' fill='%23e63946'/><text x='18' y='25' text-anchor='middle' fill='white' font-size='20' font-weight='bold' font-family='Arial'>S</text></svg>">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     {% block extra_css %}{% endblock %}
     <style>
@@ -42,42 +43,42 @@
                     <a class="nav-link {% if request.endpoint == 'index' %}active{% endif %}" href="/"><i class="bi bi-house-fill me-1"></i> Inicio</a>
                 </li>
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle {% if request.endpoint == 'categoria_dinamica' %}active{% endif %}" href="#" role="button" data-bs-toggle="dropdown">
-                        <i class="bi bi-grid-fill me-1"></i> Categor&iacute;as
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                        <i class="bi bi-grid-fill me-1"></i> Categorias
                     </a>
-                    <ul class="dropdown-menu" style="min-width:480px;padding:8px;background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,0.5);margin-top:10px;">
-                        <li style="font-size:0.65rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.3);font-weight:700;padding:6px 12px 4px;">Categor&iacute;as</li>
-                        <li><a class="dropdown-item" href="/" style="color:rgba(255,255,255,0.8);font-size:0.82rem;font-weight:500;padding:8px 12px;border-radius:8px;transition:all 0.2s;">Todos los productos</a></li>
+                    <ul class="dropdown-menu" style="min-width:480px;padding:8px;background:#1d2939;border:1px solid rgba(255,255,255,0.08);border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,0.5);margin-top:10px;">
+                        <li style="font-size:0.6rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.3);font-weight:700;padding:8px 14px 4px;">Categorias</li>
+                        <li><a class="dropdown-item" href="/"><i class="bi bi-grid-3x3-gap-fill" style="color:rgba(255,255,255,0.4);"></i> Todos los productos</a></li>
                         <li><hr class="dropdown-divider" style="border-color:rgba(255,255,255,0.06);margin:4px 0;"></li>
                         <li><div class="row g-0">
                             {% for c in todas_categorias %}
-                            <div class="col-6"><a class="dropdown-item" href="/categoria/{{ c.slug }}" style="color:rgba(255,255,255,0.8);font-size:0.82rem;font-weight:500;padding:8px 12px;border-radius:8px;transition:all 0.2s;">{{ c.nombre }}</a></div>
+                            <div class="col-6"><a class="dropdown-item d-flex align-items-center gap-2" href="/categoria/{{ c.slug }}" style="color:rgba(255,255,255,0.8);font-size:0.82rem;font-weight:500;padding:8px 12px;border-radius:8px;transition:all 0.2s;">{{ ICONOS_SVG.get(c.icono, '')|safe }} {{ c.nombre }}</a></div>
                             {% endfor %}
                         </div></li>
                     </ul>
                 </li>
             </ul>
             <div class="d-flex gap-2 align-items-center">
-                <a href="/carrito" class="btn btn-nav position-relative">
+                <a href="/carrito" class="btn btn-nav position-relative" id="cart-nav-btn">
                     <i class="bi bi-cart-fill"></i> <span class="d-none d-sm-inline">Carrito</span>
-                    {% if cart_count > 0 %}<span class="badge-nav">{{ cart_count }}</span>{% endif %}
+                    {% if cart_count > 0 %}<span class="badge-nav" id="cart-badge">{{ cart_count }}</span>{% endif %}
                 </a>
                 {% if session.user_id and session.user_id is not none %}
                 <div class="dropdown">
-                    <button class="btn btn-nav dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                        <i class="bi bi-person-circle"></i> <span class="d-none d-sm-inline">{{ session.nombre.split()[0] }}</span>
+                    <button class="btn btn-nav dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown" style="padding:4px 12px 4px 4px;">
+                        <div class="user-avatar-circle">{{ session.nombre[:2].upper() }}</div>
+                        <span class="d-none d-sm-inline" style="font-size:0.8rem;">{{ session.nombre.split()[0] }}</span>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end">
                         {% if session.rol == 'cliente' %}
                             <li><a class="dropdown-item" href="/cliente/dashboard"><i class="bi bi-speedometer2"></i> Mi Panel</a></li>
                             <li><a class="dropdown-item" href="/cliente/pedidos"><i class="bi bi-clock-history"></i> Mis Pedidos</a></li>
                             <li><a class="dropdown-item" href="/cliente/perfil"><i class="bi bi-person-gear"></i> Mi Perfil</a></li>
-                            <li><hr class="dropdown-divider" style="border-color:rgba(255,255,255,0.1);"></li>
                         {% elif session.rol == 'administrador' %}
                             <li><a class="dropdown-item" href="/dashboard"><i class="bi bi-speedometer2"></i> Panel Admin</a></li>
-                            <li><hr class="dropdown-divider" style="border-color:rgba(255,255,255,0.1);"></li>
                         {% endif %}
-                        <li><a class="dropdown-item text-danger" href="/logout"><i class="bi bi-box-arrow-right"></i> Cerrar Sesi&oacute;n</a></li>
+                        <li><hr class="dropdown-divider" style="border-color:rgba(255,255,255,0.08);margin:4px 0;"></li>
+                        <li><a class="dropdown-item text-danger" href="/logout"><i class="bi bi-box-arrow-right"></i> Cerrar Sesion</a></li>
                     </ul>
                 </div>
                 {% else %}
@@ -89,6 +90,21 @@
         </div>
     </div>
 </nav>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+        <div class="container" style="margin-top: 16px;">
+            {% set alert_class = 'danger' if category in ['error', 'danger'] else 'success' if category == 'success' else 'warning' if category == 'warning' else 'info' %}
+            {% set icon_class = 'exclamation-triangle' if category in ['error', 'danger'] else 'check-circle' if category == 'success' else 'info-circle' %}
+            <div class="alert alert-{{ alert_class }} alert-dismissible fade show">
+                <i class="bi bi-{{ icon_class }} me-2"></i> {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        </div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
 
 {% block store_nav %}{% endblock %}
 
@@ -127,12 +143,11 @@
                 <a href="/carrito"><i class="bi bi-chevron-right"></i> Carrito</a><br>
             </div>
             <div class="col-md-4">
-                <h5>NEWSLETTER</h5>
-                <p style="color:rgba(255,255,255,0.6);font-size:13px;">Recibe ofertas y novedades</p>
-                <div class="newsletter d-flex">
-                    <input type="email" class="form-control" placeholder="tu@email.com">
-                    <button type="button"><i class="bi bi-send-fill"></i></button>
-                </div>
+                <h5>CONTACTO</h5>
+                <p style="color:rgba(255,255,255,0.6);font-size:13px;margin-bottom:4px;"><i class="bi bi-geo-alt me-2"></i> {{ config.get('empresa_direccion', 'Medellín, Colombia') }}</p>
+                <p style="color:rgba(255,255,255,0.6);font-size:13px;margin-bottom:4px;"><i class="bi bi-telephone me-2"></i> {{ config.get('empresa_telefono', '+57 300 000 0000') }}</p>
+                <p style="color:rgba(255,255,255,0.6);font-size:13px;margin-bottom:4px;"><i class="bi bi-envelope me-2"></i> {{ config.get('empresa_email', 'info@stockpro.com') }}</p>
+                <p style="color:rgba(255,255,255,0.6);font-size:13px;"><i class="bi bi-clock me-2"></i> {{ config.get('empresa_horarios', 'Lun-Sáb 8:00 AM - 6:00 PM') }}</p>
             </div>
         </div>
         <hr style="border-color:rgba(255,255,255,0.1);margin:30px 0 20px;">
@@ -143,8 +158,8 @@
     </div>
 </footer>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" nonce="{{ csp_nonce }}"></script>
+<script nonce="{{ csp_nonce }}">function escHtml(t){if(!t)return'';var e=document.createElement('div');e.appendChild(document.createTextNode(t));return e.innerHTML}
 // Scroll animations with IntersectionObserver
 document.addEventListener('DOMContentLoaded', function() {
     var animElements = document.querySelectorAll('.animate-on-scroll, .animate-on-scroll-left, .animate-on-scroll-right, .animate-on-scroll-scale');
@@ -170,8 +185,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
-<script>function getCSRFToken(){return document.querySelector('meta[name="csrf-token"]').getAttribute('content')}</script>
-<script>
+<script nonce="{{ csp_nonce }}">function getCSRFToken(){return document.querySelector('meta[name="csrf-token"]').getAttribute('content')}</script>
+<script nonce="{{ csp_nonce }}">
 function actualizarBadgeCarrito() {
     fetch('/api/carrito/ver', {method:'GET'})
     .then(r=>r.json())
@@ -181,11 +196,14 @@ function actualizarBadgeCarrito() {
         if (count > 0) {
             if (badgeNav) {
                 badgeNav.textContent = count;
+                badgeNav.classList.remove('animate');
+                void badgeNav.offsetWidth;
+                badgeNav.classList.add('animate');
             } else {
-                const btn = document.querySelector('.btn-nav');
+                const btn = document.getElementById('cart-nav-btn');
                 if (btn) {
                     const b = document.createElement('span');
-                    b.className = 'badge-nav';
+                    b.className = 'badge-nav animate';
                     b.textContent = count;
                     btn.appendChild(b);
                 }

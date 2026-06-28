@@ -63,11 +63,15 @@ class _PGConnection:
             return 'SELECT 1'
         s = re.sub(r"(?i)\bINSERT\s+OR\s+IGNORE\s+INTO\b",
                     "INSERT INTO", s)
+        if 'OR IGNORE' in sql.upper():
+            s += " ON CONFLICT DO NOTHING"
         s = re.sub(r"(?i)\bINSERT\s+OR\s+REPLACE\s+INTO\b",
                     "INSERT INTO", s)
+        if 'OR REPLACE' in sql.upper():
+            s += " ON CONFLICT DO NOTHING"
         s = re.sub(r"(?i)\bBEGIN\s+IMMEDIATE\b",
                     "BEGIN", s)
-        s = re.sub(r"datetime\('now',\s*'([-+])\s*'\s*\|\|\s*\?\s*\|\|\s*'\s*(\w+)'\s*\)",
+        s = re.sub(r"datetime\('now',\s*'([-+])\s*'\s*\|\|\s*\?\s*\|\|\s*'(\w+)'\s*\)",
                    r"CURRENT_TIMESTAMP \1 INTERVAL '1 \2' * %s", s)
         s = re.sub(r"datetime\('now'(?:,\s*'([^']+)')?\)",
                    r"CURRENT_TIMESTAMP", s)
@@ -100,14 +104,21 @@ class _PGCursor:
         import psycopg2.extras
         self._cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         self._conn = conn
+        self._last_insert_id = None
 
     def execute(self, sql, params=None):
         sql = _PGConnection._convert(sql)
+        is_insert = sql.strip().upper().startswith('INSERT') and 'RETURNING' not in sql.upper()
+        if is_insert:
+            sql += " RETURNING id"
         try:
             if params:
                 self._cursor.execute(sql, params)
             else:
                 self._cursor.execute(sql)
+            if is_insert:
+                row = self._cursor.fetchone()
+                self._last_insert_id = row['id'] if row else None
         except Exception as e:
             if hasattr(e, 'diag') and hasattr(e.diag, 'sqlstate'):
                 if e.diag.sqlstate == '23505':
@@ -132,9 +143,14 @@ class _PGCursor:
 
     @property
     def lastrowid(self):
+        if self._last_insert_id is not None:
+            return self._last_insert_id
+        # Fallback: query last sequence value (not concurrent-safe, but rare)
         cur = self._conn.cursor()
         cur.execute("SELECT LASTVAL()")
-        return cur.fetchone()[0]
+        val = cur.fetchone()[0]
+        cur.close()
+        return val
 
     @property
     def rowcount(self):

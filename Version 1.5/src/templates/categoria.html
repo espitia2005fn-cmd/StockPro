@@ -7,14 +7,13 @@
 .cat-hero {
     margin: -20px -20px 24px -20px;
     position: relative;
-    height: 420px;
+    height: 380px;
     overflow: hidden;
+    border-radius: 0 0 20px 20px;
 }
 .cat-hero img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    position: absolute;
+    width: 100%; height: 100%;
+    object-fit: cover; position: absolute;
     top: 0; left: 0;
     will-change: transform;
 }
@@ -22,15 +21,15 @@
     content: '';
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: linear-gradient(135deg, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.25) 50%, rgba(0,0,0,0.5) 100%);
+    background: linear-gradient(135deg, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.5) 100%);
     z-index: 1;
 }
 .cat-hero::after {
     content: '';
     position: absolute;
     bottom: 0; left: 0; right: 0;
-    height: 120px;
-    background: linear-gradient(to top, rgba(0,0,0,0.4), transparent);
+    height: 100px;
+    background: linear-gradient(to top, rgba(0,0,0,0.3), transparent);
     z-index: 1;
 }
 .cat-hero .hero-text {
@@ -44,31 +43,28 @@
     padding: 0 30px;
 }
 .cat-hero .hero-text h1 {
-    font-size: 3.5rem;
+    font-size: 3rem;
     font-weight: 800;
-    font-family: 'Anton', 'Bebas Neue', sans-serif;
-    letter-spacing: 2px;
-    text-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    font-family: 'Outfit', sans-serif;
+    letter-spacing: -0.5px;
+    text-shadow: 0 4px 30px rgba(0,0,0,0.3);
     margin-bottom: 8px;
 }
 .cat-hero .hero-text h1 svg {
-    width: 48px;
-    height: 48px;
+    width: 44px; height: 44px;
     vertical-align: middle;
     filter: drop-shadow(0 2px 8px rgba(0,0,0,0.3));
 }
 .cat-hero .hero-text p {
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     opacity: 0.9;
-    max-width: 600px;
+    max-width: 550px;
     margin: 0 auto;
-    text-shadow: 0 2px 8px rgba(0,0,0,0.2);
 }
 @media (max-width: 768px) {
-    .cat-hero { height: 300px; }
-    .cat-hero .hero-text h1 { font-size: 2.2rem; }
-    .cat-hero .hero-text h1 svg { width: 36px; height: 36px; }
-    .cat-hero .hero-text p { font-size: 1rem; }
+    .cat-hero { height: 260px; border-radius: 0; }
+    .cat-hero .hero-text h1 { font-size: 2rem; }
+    .cat-hero .hero-text p { font-size: 0.9rem; }
 }
 </style>
 {% endblock %}
@@ -94,15 +90,22 @@
 </div>
 
 <script>
-function mostrarNotificacion(mensaje, esError = false) {
-    const toast = document.createElement('div');
+function escHtml(str) {
+    var d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+}
+
+function mostrarNotificacion(mensaje, esError) {
+    esError = esError || false;
+    var toast = document.createElement('div');
     toast.className = 'notif-toast' + (esError ? ' error' : '');
-    toast.innerHTML = `<i class="bi ${esError ? 'bi-x-circle-fill' : 'bi-check-circle-fill'}"></i> ${mensaje}`;
+    toast.innerHTML = '<i class="bi ' + (esError ? 'bi-x-circle-fill' : 'bi-check-circle-fill') + '"></i> ' + escHtml(mensaje);
     document.body.appendChild(toast);
-    setTimeout(() => toast.classList.add('show'), 10);
-    setTimeout(() => {
+    setTimeout(function() { toast.classList.add('show'); }, 10);
+    setTimeout(function() {
         toast.classList.remove('show');
-        setTimeout(() => toast.remove(), 300);
+        setTimeout(function() { toast.remove(); }, 300);
     }, 2500);
 }
 
@@ -114,7 +117,7 @@ async function agregarAlCarrito(id, nombre, precio, imagen, categoria, boton) {
         const res = await fetch('/api/carrito/agregar', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
-            body: JSON.stringify({ id, nombre, precio, cantidad: 1, imagen, categoria })
+            body: JSON.stringify({ id: id, nombre: nombre, precio: precio, cantidad: 1, imagen: imagen, categoria: categoria })
         });
         const data = await res.json();
         if (data.success) {
@@ -144,46 +147,55 @@ async function cargarInventario() {
 
 function mostrarProductos(productos) {
     if(productos.length === 0) {
-        document.getElementById('products-grid').innerHTML = `<div class="col-12 text-center py-5"><i class="bi bi-emoji-frown fs-1"></i><h5>No hay productos disponibles</h5></div>`;
+        document.getElementById('products-grid').innerHTML = '<div class="col-12 text-center py-5"><i class="bi bi-emoji-frown fs-1"></i><h5>No hay productos disponibles</h5></div>';
         return;
     }
-    let html = '';
-    for(const p of productos){
-        const esCritico = p.cantidad <= p.stock_minimo;
-        let imagenUrl = p.imagen ? `/static/uploads/${p.imagen}` : 'https://cdn-icons-png.flaticon.com/512/109/109869.png';
-        const nombreEscapado = p.nombre.replace(/'/g, "\\'");
-        html += `
-        <div class="col-6 col-md-4 col-lg-3 mb-4">
-            <div class="product-card">
-                <div class="product-image" style="position:relative;">
-                    ${p.es_nuevo ? '<div style="position:absolute;top:8px;right:8px;z-index:5;background:linear-gradient(135deg,#ff6b35,#e63946);color:#fff;font-size:0.55rem;font-weight:800;text-transform:uppercase;padding:3px 10px;border-radius:4px;box-shadow:0 2px 8px rgba(230,57,70,0.35);">Nuevo</div>' : ''}
-                    <img src="${imagenUrl}" alt="${p.nombre}" onerror="this.src='https://cdn-icons-png.flaticon.com/512/109/109869.png'">
-                </div>
-                <div class="product-info">
-                    <div class="product-code">${p.codigo}</div>
-                    <div class="product-name">${p.nombre}</div>
-                    <div class="product-price">$${p.precio.toLocaleString()}</div>
-                    <div class="mb-2"><span class="${esCritico ? 'stock-low' : 'stock-good'}">${esCritico ? p.cantidad+' und' : p.cantidad+' disp'}</span></div>
-                    <div class="button-group">
-                        <a href="/producto/${p.id}" class="btn-detail">
-                            <i class="bi bi-eye"></i> Ver
-                        </a>
-                        <button class="btn-cart" onclick="agregarAlCarrito(${p.id}, '${nombreEscapado}', ${p.precio}, '${imagenUrl}', '{{ categoria.nombre }}', this)">
-                            <i class="bi bi-cart-plus"></i> Agregar
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>`;
+    var html = '';
+    for(var idx = 0; idx < productos.length; idx++) {
+        var p = productos[idx];
+        var esCritico = p.cantidad <= p.stock_minimo;
+        var imagenUrl = p.imagen ? '/static/uploads/' + encodeURIComponent(p.imagen) : 'https://cdn-icons-png.flaticon.com/512/109/109869.png';
+        var nombreEsc = escHtml(p.nombre);
+        var codigoEsc = escHtml(p.codigo);
+        var nuevoTag = p.es_nuevo ? '<div class="new-ribbon">Nuevo</div>' : '';
+        var stockClass = esCritico ? 'low' : 'ok';
+        var stockIcon = esCritico ? 'exclamation-circle' : 'check-circle';
+        var stockText = esCritico ? p.cantidad + ' und' : p.cantidad + ' disp';
+        html += '<div class="col-6 col-md-4 col-lg-3 mb-4">' +
+            '<div class="product-card-modern">' +
+            '<div class="product-img-wrap">' + nuevoTag +
+            '<img src="' + escHtml(imagenUrl) + '" loading="lazy" alt="' + nombreEsc + '" onerror="this.src=\'https://cdn-icons-png.flaticon.com/512/109/109869.png\'">' +
+            '</div>' +
+            '<div class="product-body">' +
+            '<div class="prod-codigo">' + codigoEsc + '</div>' +
+            '<div class="prod-nombre">' + nombreEsc + '</div>' +
+            '<div class="prod-precio">$' + escHtml(p.precio.toLocaleString()) + '</div>' +
+            '<span class="prod-stock ' + stockClass + '"><i class="bi bi-' + stockIcon + ' me-1"></i> ' + stockText + '</span>' +
+            '<div class="button-group-modern">' +
+            '<a href="/producto/' + p.id + '" class="btn-prod btn-prod-detail"><i class="bi bi-eye"></i> Ver</a>' +
+            '<button class="btn-prod btn-prod-cart" data-id="' + p.id + '" data-nombre="' + nombreEsc + '" data-precio="' + p.precio + '" data-imagen="' + escHtml(imagenUrl) + '" data-categoria="' + escHtml('{{ categoria.nombre }}') + '"><i class="bi bi-cart-plus"></i> Agregar</button>' +
+            '</div></div></div></div>';
     }
     document.getElementById('products-grid').innerHTML = html;
+    var btns = document.querySelectorAll('.btn-prod-cart[data-id]');
+    for (var i = 0; i < btns.length; i++) {
+        btns[i].addEventListener('click', function() {
+            agregarAlCarrito(
+                parseInt(this.dataset.id),
+                this.dataset.nombre,
+                parseFloat(this.dataset.precio),
+                this.dataset.imagen,
+                this.dataset.categoria,
+                this
+            );
+        });
+    }
 }
 
-// Parallax effect on hero
-const heroImg = document.querySelector('.cat-hero img');
+var heroImg = document.querySelector('.cat-hero img');
 if (heroImg) {
     window.addEventListener('scroll', function() {
-        const scroll = window.pageYOffset;
+        var scroll = window.pageYOffset;
         heroImg.style.transform = 'translateY(' + (scroll * 0.3) + 'px)';
     }, { passive: true });
 }

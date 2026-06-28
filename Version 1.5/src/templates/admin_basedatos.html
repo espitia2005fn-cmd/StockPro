@@ -70,7 +70,7 @@ function fmt(k,v) {
     if ((k==='precio'||k==='total'||k==='precio_unitario'||k==='costo')&&typeof v==='number') return '$'+Number(v).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
     if (k==='activo') return v==1?'Sí':'No';
     if (k==='fecha'||k==='fecha_registro') { if(typeof v==='string'&&v.includes('T')) try{return v.split('T')[0]+' '+v.split('T')[1].split('.')[0];}catch(e){} if(typeof v==='string'&&v.length===10) return v; }
-    return v;
+    return escHtml(String(v));
 }
 function renderizarTabla(seccion, datos) {
     const contenedor = document.getElementById('contenido-db');

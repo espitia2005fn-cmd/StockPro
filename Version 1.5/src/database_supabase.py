@@ -57,6 +57,7 @@ def crear_tablas():
     cursor.execute('''CREATE TABLE IF NOT EXISTS alertas (
         id SERIAL PRIMARY KEY,
         repuesto_id INTEGER REFERENCES repuestos(id),
+        mensaje TEXT,
         tipo TEXT,
         estado TEXT DEFAULT 'PENDIENTE',
         fecha TIMESTAMP DEFAULT NOW()
@@ -77,8 +78,19 @@ def crear_tablas():
         reset_token TEXT,
         reset_token_expiry DOUBLE PRECISION,
         permisos TEXT DEFAULT '{}',
-        fecha_registro TIMESTAMP DEFAULT NOW()
+        fecha_registro TIMESTAMP DEFAULT NOW(),
+        failed_attempts INTEGER DEFAULT 0,
+        locked_until TIMESTAMP
     )''')
+
+    try:
+        cursor.execute("ALTER TABLE usuarios ADD COLUMN failed_attempts INTEGER DEFAULT 0")
+    except Exception:
+        pass
+    try:
+        cursor.execute("ALTER TABLE usuarios ADD COLUMN locked_until TIMESTAMP")
+    except Exception:
+        pass
 
     cursor.execute('''CREATE TABLE IF NOT EXISTS ventas (
         id SERIAL PRIMARY KEY,
@@ -207,6 +219,11 @@ def crear_tablas():
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_repuestos_nombre ON repuestos(nombre)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_usuarios_email ON usuarios(email)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_pedido_detalle_producto ON pedido_detalle(producto_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_pedido_detalle_pedido ON pedido_detalle(pedido_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_pedidos_estado ON pedidos(estado)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_pedidos_fecha ON pedidos(fecha)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_pagos_pedido ON pagos(pedido_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_repuestos_codigo ON repuestos(codigo)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_actividad_fecha ON actividad(fecha DESC)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_webhooks_evento ON webhooks(evento)")
 
@@ -246,7 +263,11 @@ def crear_tablas():
 
     cursor.execute("SELECT id FROM usuarios WHERE username = 'admin'")
     if not cursor.fetchone():
-        admin_hash = hash_password(os.environ.get('ADMIN_PASSWORD', 'admin123'))
+        admin_password = os.environ.get('ADMIN_PASSWORD')
+        if not admin_password:
+            admin_password = os.urandom(16).hex()
+            print("ADVERTENCIA: No se encontró ADMIN_PASSWORD en variables de entorno. Se usó una contraseña aleatoria.")
+        admin_hash = hash_password(admin_password)
         cursor.execute('''INSERT INTO usuarios (username, password, nombre, email, rol, activo)
                           VALUES (%s, %s, %s, %s, %s, %s)''',
                        ('admin', admin_hash, 'Administrador', 'admin@stockpro.com', 'administrador', 1))
@@ -280,6 +301,33 @@ def verificar_usuario(username, password):
     conn.close()
     return None
 
+def obtener_bloqueo_usuario(username):
+    conn = get_conn()
+    cursor = conn.cursor()
+    cursor.execute("SELECT failed_attempts, locked_until FROM usuarios WHERE username = %s", (username,))
+    row = cursor.fetchone()
+    conn.close()
+    if not row:
+        return None, None
+    return row['failed_attempts'], row['locked_until']
+
+def incrementar_intentos_fallidos(username):
+    conn = get_conn()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE usuarios SET failed_attempts = COALESCE(failed_attempts, 0) + 1 WHERE username = %s", (username,))
+    cursor.execute("SELECT failed_attempts FROM usuarios WHERE username = %s", (username,))
+    row = cursor.fetchone()
+    if row and row['failed_attempts'] >= 5:
+        cursor.execute("UPDATE usuarios SET locked_until = NOW() + INTERVAL '15 minutes' WHERE username = %s", (username,))
+    conn.commit()
+    conn.close()
+
+def resetear_intentos_fallidos(username):
+    conn = get_conn()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE usuarios SET failed_attempts = 0, locked_until = NULL WHERE username = %s", (username,))
+    conn.commit()
+    conn.close()
 
 def obtener_usuario_por_id(user_id):
     conn = get_conn()

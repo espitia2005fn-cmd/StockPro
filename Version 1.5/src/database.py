@@ -88,7 +88,9 @@ def crear_tablas():
     # Migración segura para bases existentes
     for col, tipo in [('telefono', 'TEXT'), ('direccion', 'TEXT'),
                       ('foto_perfil', "TEXT DEFAULT ''"),
-                      ('ultimo_acceso', 'TIMESTAMP')]:
+                      ('ultimo_acceso', 'TIMESTAMP'),
+                      ('failed_attempts', "INTEGER DEFAULT 0"),
+                      ('locked_until', 'TIMESTAMP')]:
         try:
             cursor.execute(f"ALTER TABLE usuarios ADD COLUMN {col} {tipo}")
         except Exception:
@@ -237,7 +239,11 @@ def crear_tablas():
     # Crear usuario admin por defecto si no existe
     cursor.execute("SELECT id FROM usuarios WHERE username = 'admin'")
     if not cursor.fetchone():
-        admin_password_hash = hash_password(os.environ.get('ADMIN_PASSWORD', 'admin123'))
+        admin_password = os.environ.get('ADMIN_PASSWORD')
+        if not admin_password:
+            admin_password = os.urandom(16).hex()
+            print("ADVERTENCIA: No se encontró ADMIN_PASSWORD en variables de entorno. Se usó una contraseña aleatoria.")
+        admin_password_hash = hash_password(admin_password)
         cursor.execute('''INSERT INTO usuarios (username, password, nombre, email, rol, activo) 
                           VALUES (?, ?, ?, ?, ?, ?)''', 
                           ('admin', admin_password_hash, 'Administrador', 'admin@stockpro.com', 'administrador', 1))
@@ -252,6 +258,11 @@ def crear_tablas():
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_repuestos_nombre ON repuestos(nombre)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_usuarios_email ON usuarios(email)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_pedido_detalle_producto ON pedido_detalle(producto_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_pedido_detalle_pedido ON pedido_detalle(pedido_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_pedidos_estado ON pedidos(estado)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_pedidos_fecha ON pedidos(fecha)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_pagos_pedido ON pagos(pedido_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_repuestos_codigo ON repuestos(codigo)")
 
     # ========== TABLA DE ACTIVIDAD / LOGS ==========
     cursor.execute('''CREATE TABLE IF NOT EXISTS actividad (
@@ -535,6 +546,34 @@ def verificar_usuario(username, password):
 
     conn.close()
     return None
+
+def obtener_bloqueo_usuario(username):
+    conn = obtener_conexion()
+    cursor = conn.cursor()
+    cursor.execute("SELECT failed_attempts, locked_until FROM usuarios WHERE username = ?", (username,))
+    row = cursor.fetchone()
+    conn.close()
+    if not row:
+        return None, None
+    return row[0], row[1]
+
+def incrementar_intentos_fallidos(username):
+    conn = obtener_conexion()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE usuarios SET failed_attempts = COALESCE(failed_attempts, 0) + 1 WHERE username = ?", (username,))
+    cursor.execute("SELECT failed_attempts FROM usuarios WHERE username = ?", (username,))
+    row = cursor.fetchone()
+    if row and row[0] >= 5:
+        cursor.execute("UPDATE usuarios SET locked_until = datetime('now', '+15 minutes') WHERE username = ?", (username,))
+    conn.commit()
+    conn.close()
+
+def resetear_intentos_fallidos(username):
+    conn = obtener_conexion()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE usuarios SET failed_attempts = 0, locked_until = NULL WHERE username = ?", (username,))
+    conn.commit()
+    conn.close()
 
 def obtener_usuario_por_id(user_id):
     conn = obtener_conexion()

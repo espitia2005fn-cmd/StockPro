@@ -141,7 +141,7 @@ function abrirModal(tipo) {
                         if (items.length) {
                             html += '<h6 class="mb-2 text-uppercase text-muted small fw-bold">'+nivel+' ('+items.length+')</h6>';
                             html += '<table class="table table-sm mb-3"><thead><tr><th>Producto</th><th>Stock</th><th>M&iacute;nimo</th></tr></thead><tbody>';
-                            items.forEach(function(p) { html += '<tr><td>'+p.nombre+'</td><td>'+p.cantidad+'</td><td>'+p.stock_minimo+'</td></tr>'; });
+                            items.forEach(function(p) { html += '<tr><td>'+escHtml(p.nombre)+'</td><td>'+p.cantidad+'</td><td>'+p.stock_minimo+'</td></tr>'; });
                             html += '</tbody></table>';
                         }
                     });
@@ -198,37 +198,59 @@ function cargarDashboard() {
             document.getElementById('stock-critico-badge').textContent = data.stock_critico;
             var movBody = document.getElementById('movimientos-recientes');
             if (data.movimientos && data.movimientos.length) {
-                movBody.innerHTML = data.movimientos.slice(0,5).map(function(m) { return '<tr><td>'+m.producto+'</td><td>'+m.tipo+'</td><td>'+m.cantidad+'</td><td>'+m.fecha+'</td></tr>'; }).join('');
+                movBody.innerHTML = data.movimientos.slice(0,5).map(function(m) { return '<tr><td>'+escHtml(m.producto)+'</td><td>'+escHtml(m.tipo)+'</td><td>'+m.cantidad+'</td><td>'+escHtml(m.fecha)+'</td></tr>'; }).join('');
             } else {
                 movBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted small py-3">Sin movimientos</td></tr>';
             }
             var stockBody = document.getElementById('stock-critico-body');
             if (data.stock_critico_data && data.stock_critico_data.length) {
                 stockBody.innerHTML = data.stock_critico_data.map(function(p) {
-                    return '<tr><td>'+p.nombre+'</td><td><span class="badge '+(p.cantidad<=0?'badge-error':'badge-warning')+'">'+p.cantidad+'</span></td><td>'+p.stock_minimo+'</td></tr>';
+                    return '<tr><td>'+escHtml(p.nombre)+'</td><td><span class="badge '+(p.cantidad<=0?'badge-error':'badge-warning')+'">'+p.cantidad+'</span></td><td>'+p.stock_minimo+'</td></tr>';
                 }).join('');
             } else {
                 stockBody.innerHTML = '<tr><td colspan="3" class="text-center text-muted small py-3">Stock saludable</td></tr>';
             }
             if (data.meses && data.meses.length) {
                 crearEChart('ventasChart', {
-                    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-                    grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+                    tooltip: {
+                        trigger: 'axis',
+                        axisPointer: { type: 'shadow' },
+                        formatter: function(params) {
+                            var p = params[0];
+                            return '<strong>' + p.name + '</strong><br/>Ventas: <strong>$' + p.value.toLocaleString() + '</strong>';
+                        }
+                    },
+                    grid: { left: '3%', right: '4%', bottom: '8%', containLabel: true },
                     xAxis: { type: 'category', data: data.meses, axisLabel: { rotate: 30 } },
                     yAxis: { type: 'value', axisLabel: { formatter: function(v) { return '$' + v.toLocaleString(); } } },
-                    series: [{ type: 'bar', data: data.ventas_mensuales, itemStyle: { color: '#465FFF', borderRadius: [5,5,0,0] } }]
+                    series: [{
+                        type: 'bar', data: data.ventas_mensuales,
+                        itemStyle: { color: '#465FFF', borderRadius: [6,6,0,0] },
+                        emphasis: { itemStyle: { color: '#7a5af8' } },
+                        animationDuration: 800, animationEasing: 'elasticOut'
+                    }]
                 });
             } else {
                 document.getElementById('ventasChart').innerHTML = '<p class="text-center text-muted py-5">Sin datos de ventas</p>';
             }
             if (data.categorias_nombres && data.categorias_nombres.length) {
                 crearEChart('categoriaChart', {
-                    tooltip: { trigger: 'item' },
-                    legend: { bottom: '0%' },
+                    tooltip: {
+                        trigger: 'item',
+                        formatter: function(p) {
+                            return '<strong>' + p.name + '</strong><br/>' + p.value + ' productos (' + p.percent.toFixed(1) + '%)';
+                        }
+                    },
+                    legend: { bottom: '0%', textStyle: { fontSize: 11 } },
                     series: [{
                         type: 'pie', radius: ['40%', '70%'], avoidLabelOverlap: true,
                         label: { show: false },
-                        emphasis: { label: { show: true, fontSize: 14, fontWeight: 'bold' } },
+                        emphasis: {
+                            label: { show: true, fontSize: 14, fontWeight: 'bold' },
+                            itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0,0,0,0.2)' }
+                        },
+                        itemStyle: { borderRadius: 4, borderColor: '#fff', borderWidth: 2 },
+                        animationType: 'scale', animationEasing: 'elasticOut',
                         data: data.categorias_nombres.map(function(n, i) {
                             return { name: n, value: data.categorias_count[i], itemStyle: { color: COLORS[i % COLORS.length] } };
                         })

@@ -149,7 +149,7 @@ function toggleDetalle(id) {
                     if (data.detalles && data.detalles.length) {
                         html = '<table class="table table-sm ord-det-table mb-0"><thead><tr><th>C&oacute;digo</th><th>Producto</th><th class="text-center">Cant</th><th class="text-end">Precio</th><th class="text-end">Subtotal</th></tr></thead><tbody>';
                         data.detalles.forEach(function(d) {
-                            html += '<tr><td style="font-family:monospace;font-size:0.8rem;">' + (d.codigo || '-') + '</td><td>' + d.nombre + '</td><td class="text-center">' + d.cantidad + '</td><td class="text-end">$' + d.precio.toLocaleString() + '</td><td class="text-end fw-bold">$' + d.subtotal.toLocaleString() + '</td></tr>';
+                            html += '<tr><td style="font-family:monospace;font-size:0.8rem;">' + escHtml(d.codigo || '-') + '</td><td>' + escHtml(d.nombre) + '</td><td class="text-center">' + d.cantidad + '</td><td class="text-end">$' + d.precio.toLocaleString() + '</td><td class="text-end fw-bold">$' + d.subtotal.toLocaleString() + '</td></tr>';
                         });
                         html += '</tbody></table>';
                         if (data.subtotal !== undefined) {

@@ -1,4 +1,4 @@
-from flask import Flask, render_template, jsonify, request, redirect, url_for, flash, session, make_response, send_file
+from flask import Flask, render_template, jsonify, request, redirect, url_for, flash, session, make_response, send_file, g
 from werkzeug.utils import secure_filename, safe_join
 from html import escape
 import sqlite3
@@ -9,6 +9,8 @@ from datetime import datetime, timedelta
 from functools import wraps
 import random
 import secrets
+import logging
+logger = logging.getLogger(__name__)
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import LinearRegression
@@ -28,7 +30,7 @@ csrf = CSRFProtect(app)
 
 # CORS configuration
 from flask_cors import CORS
-ALLOWED_ORIGINS = os.environ.get('CORS_ORIGINS', '*').split(',')
+ALLOWED_ORIGINS = os.environ.get('CORS_ORIGINS', 'http://localhost:5000,http://127.0.0.1:5000').split(',')
 CORS(app, origins=ALLOWED_ORIGINS, supports_credentials=True,
      allow_headers=['Content-Type', 'X-CSRFToken'],
      methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'])
@@ -122,7 +124,7 @@ def inject_cart_count():
 def inject_categorias():
     try:
         cats = db.obtener_categorias()
-    except:
+    except Exception:
         cats = []
     return {'todas_categorias': cats}
 
@@ -130,9 +132,19 @@ def inject_categorias():
 def inject_config():
     try:
         cfg = db.get_all_config()
-    except:
+    except Exception:
         cfg = {}
     return {'config': cfg, 'ICONOS_SVG': ICONOS_SVG}
+
+@app.before_request
+def generar_nonce():
+    g.csp_nonce = secrets.token_hex(16)
+
+@app.context_processor
+def inject_nonce():
+    return {'csp_nonce': getattr(g, 'csp_nonce', secrets.token_hex(16))}
+
+
 
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'stockpro.db')
 
@@ -232,10 +244,11 @@ def add_security_headers(response):
     response.headers['X-Frame-Options'] = 'SAMEORIGIN'
     response.headers['X-XSS-Protection'] = '1; mode=block'
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
-    # Content Security Policy - bloquea XSS y data exfiltration
+    response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+    nonce = getattr(g, 'csp_nonce', '')
     response.headers['Content-Security-Policy'] = (
         "default-src 'self'; "
-        "script-src 'self' https://cdn.jsdelivr.net https://fonts.googleapis.com https://cdnjs.cloudflare.com 'unsafe-inline'; "
+        f"script-src 'self' https://cdn.jsdelivr.net https://fonts.googleapis.com https://cdnjs.cloudflare.com 'nonce-{nonce}' 'strict-dynamic'; "
         "style-src 'self' https://cdn.jsdelivr.net https://fonts.googleapis.com https://cdnjs.cloudflare.com 'unsafe-inline'; "
         "img-src 'self' data: https:; "
         "font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com; "
@@ -245,6 +258,16 @@ def add_security_headers(response):
         "form-action 'self'"
     )
     return response
+
+# ========== ERROR HANDLERS ==========
+@app.errorhandler(404)
+def not_found(e):
+    return render_template('mantenimiento.html', error_code=404, error_msg='Página no encontrada'), 404
+
+@app.errorhandler(500)
+def server_error(e):
+    return render_template('mantenimiento.html', error_code=500, error_msg='Error interno del servidor'), 500
+
 
 # ========== RUTAS PÚBLICAS (sin login) ==========
 @app.route('/')
@@ -267,7 +290,7 @@ def ver_producto(id):
     producto = cursor.fetchone()
     conn.close()
     if not producto:
-        flash('Producto no encontrado', 'error')
+        flash('Producto no encontrado', 'danger')
         return redirect(url_for('index'))
     return render_template('producto_detalle.html', producto=producto)
 
@@ -286,9 +309,11 @@ def api_inventario():
         es_nuevo = False
         if fecha_reg:
             try:
-                fechan = datetime.strptime(fecha_reg, '%Y-%m-%d %H:%M:%S') if ' ' in str(fecha_reg) else datetime.strptime(fecha_reg, '%Y-%m-%d')
-                es_nuevo = (datetime.now() - fechan).total_seconds() < 259200  # 3 dias
-            except: pass
+                fecha_str = str(fecha_reg)
+                fechan = datetime.strptime(fecha_str, '%Y-%m-%d %H:%M:%S') if ' ' in fecha_str else datetime.strptime(fecha_str, '%Y-%m-%d')
+                es_nuevo = (datetime.now() - fechan).total_seconds() < 259200
+            except Exception:
+                import traceback; traceback.print_exc()
         inventario.append({
             'id': row[0], 'codigo': row[1], 'nombre': row[2],
             'categoria': row[3], 'cantidad': row[4], 'precio': row[5],
@@ -312,9 +337,11 @@ def api_inventario_por_categoria(categoria):
         es_nuevo = False
         if fecha_reg:
             try:
-                fechan = datetime.strptime(fecha_reg, '%Y-%m-%d %H:%M:%S') if ' ' in str(fecha_reg) else datetime.strptime(fecha_reg, '%Y-%m-%d')
-                es_nuevo = (datetime.now() - fechan).total_seconds() < 259200  # 3 dias
-            except: pass
+                fecha_str = str(fecha_reg)
+                fechan = datetime.strptime(fecha_str, '%Y-%m-%d %H:%M:%S') if ' ' in fecha_str else datetime.strptime(fecha_str, '%Y-%m-%d')
+                es_nuevo = (datetime.now() - fechan).total_seconds() < 259200
+            except Exception:
+                import traceback; traceback.print_exc()
         inventario.append({
             'id': row[0], 'codigo': row[1], 'nombre': row[2],
             'categoria': row[3], 'cantidad': row[4], 'precio': row[5],
@@ -474,6 +501,8 @@ def confirmar_pedido():
         'factura': factura,
         'fecha': datetime.now().strftime('%d/%m/%Y %H:%M:%S'),
         'productos': carrito_validado,
+        'subtotal': subtotal,
+        'iva': iva,
         'total': total,
         'cliente': cliente_nombre,
     }
@@ -495,9 +524,12 @@ def api_pedido_detalle(id):
         return jsonify({'error': 'No encontrado'}), 404
 
     # Verificar que el pedido pertenece al usuario (o es admin)
-    if session.get('rol') != 'administrador' and pedido[0] and pedido[0] != session.get('user_id'):
-        conn.close()
-        return jsonify({'error': 'No autorizado'}), 403
+    usuario_id_pedido = pedido[0]
+    user_id = session.get('user_id')
+    if session.get('rol') != 'administrador':
+        if not usuario_id_pedido or usuario_id_pedido != user_id:
+            conn.close()
+            return jsonify({'error': 'No autorizado'}), 403
 
     cursor.execute('''SELECT codigo, nombre, cantidad, precio, subtotal FROM pedido_detalle WHERE pedido_id = ?''', (id,))
     rows = cursor.fetchall()
@@ -703,7 +735,7 @@ def actualizar_perfil():
 
     if len(nombre or '') > MAX_LEN['nombre'] or len(email or '') > MAX_LEN['email'] or \
        len(telefono or '') > MAX_LEN['telefono'] or len(direccion or '') > MAX_LEN['direccion']:
-        flash('Uno o m&aacute;s campos superan la longitud m&aacute;xima permitida', 'error')
+        flash('Uno o más campos superan la longitud máxima permitida', 'danger')
         return redirect(url_for('cliente_perfil'))
 
     conn = get_db()
@@ -782,15 +814,31 @@ def api_cliente_pedidos():
 def login():
     if request.method == 'POST':
         if not validar_captcha(request.form.get('_captcha', '')):
-            flash(' Código de verificación incorrecto', 'error')
+            flash(' Código de verificación incorrecto', 'danger')
             captcha_q = generar_captcha()
             return render_template('login.html', captcha_q=captcha_q)
         username = request.form.get('username')
         password = request.form.get('password')
+
+        # Bloqueo de cuenta por intentos fallidos
+        failed, locked_until = db.obtener_bloqueo_usuario(username)
+        if locked_until is not None:
+            try:
+                if isinstance(locked_until, str):
+                    lock_time = datetime.strptime(locked_until, '%Y-%m-%d %H:%M:%S')
+                else:
+                    lock_time = locked_until
+                if datetime.now() < lock_time:
+                    flash(' Cuenta bloqueada por múltiples intentos. Intente nuevamente en 15 minutos.', 'danger')
+                    captcha_q = generar_captcha()
+                    return render_template('login.html', captcha_q=captcha_q)
+            except Exception:
+                pass
+
         usuario = db.verificar_usuario(username, password)
         if usuario:
+            db.resetear_intentos_fallidos(username)
             session.clear()
-            # session.clear() ya crea una sesión nueva en Flask cookie-based sessions
             session['user_id'] = usuario[0]
             session['username'] = usuario[1]
             session['nombre'] = usuario[2]
@@ -809,7 +857,8 @@ def login():
             else:
                 return redirect(url_for('index'))
         else:
-            flash(' Usuario o contraseña incorrectos', 'error')
+            flash(' Usuario o contraseña incorrectos', 'danger')
+            db.incrementar_intentos_fallidos(username)
     captcha_q = generar_captcha()
     return render_template('login.html', captcha_q=captcha_q)
 
@@ -829,7 +878,7 @@ def logout():
 def recuperar_password():
     if request.method == 'POST':
         if not validar_captcha(request.form.get('_captcha', '')):
-            flash(' Código de verificación incorrecto', 'error')
+            flash(' Código de verificación incorrecto', 'danger')
             captcha_q = generar_captcha()
             return render_template('recuperar_pass.html', captcha_q=captcha_q)
         email = request.form.get('email')
@@ -870,7 +919,7 @@ El enlace expirará en 1 hora.
 def reset_password(token):
     usuario = db.verificar_token_reset(token)
     if not usuario:
-        flash(' Enlace inválido o expirado', 'error')
+        flash(' Enlace inválido o expirado', 'danger')
         return redirect(url_for('login'))
     
     if request.method == 'POST':
@@ -879,7 +928,7 @@ def reset_password(token):
             db.actualizar_password(usuario[0], nueva)
             flash(' Contraseña actualizada correctamente', 'success')
             return redirect(url_for('login'))
-        flash(' La contraseña debe tener al menos 8 caracteres', 'error')
+        flash(' La contraseña debe tener al menos 8 caracteres', 'danger')
     
     return render_template('cambiar_pass.html', token=token)
 
@@ -908,7 +957,7 @@ def registro_cliente():
         if len(nombre) > MAX_LEN['nombre'] or len(email) > MAX_LEN['email'] or \
            len(username) > MAX_LEN['username'] or len(password) > MAX_LEN['password'] or \
            len(telefono) > MAX_LEN['telefono'] or len(direccion) > MAX_LEN['direccion']:
-            flash('Uno o m&aacute;s campos superan la longitud m&aacute;xima permitida', 'danger')
+            flash('Uno o más campos superan la longitud máxima permitida', 'danger')
             return redirect(url_for('registro_cliente'))
 
         if password != confirm_password:
@@ -992,7 +1041,7 @@ def admin_usuario_editar(id):
         flash(' Usuario actualizado', 'success')
     except Exception as e:
         app.logger.error(f"Error al actualizar usuario: {e}")
-        flash('Error al actualizar usuario', 'error')
+        flash('Error al actualizar usuario', 'danger')
     return redirect(url_for('admin_usuarios'))
 
 @app.route('/admin/usuario/eliminar/<int:id>', methods=['POST'])
@@ -1002,7 +1051,7 @@ def admin_usuario_eliminar(id):
     if db.eliminar_usuario(id):
         flash(' Usuario eliminado', 'success')
     else:
-        flash(' No se puede eliminar al admin', 'error')
+        flash(' No se puede eliminar al admin', 'danger')
     return redirect(url_for('admin_usuarios'))
 
 @app.route('/admin/usuario/cambiar_contrasena/<int:id>', methods=['POST'])
@@ -1019,7 +1068,7 @@ def admin_usuario_cambiar_contrasena(id):
         conn.close()
         flash(' Contraseña actualizada', 'success')
     else:
-        flash(' Mínimo 8 caracteres', 'error')
+        flash(' Mínimo 8 caracteres', 'danger')
     return redirect(url_for('admin_usuarios'))
 
 @app.route('/admin/productos')
@@ -1038,7 +1087,7 @@ def admin_configuracion():
                      'empresa_direccion', 'empresa_horarios', 'anio_copyright']:
             val = request.form.get(key, '')
             if len(val) > MAX_LEN['empresa_valor']:
-                flash(f'El campo {key} supera la longitud m&aacute;xima', 'error')
+                flash(f'El campo {key} supera la longitud máxima', 'danger')
                 return redirect(url_for('admin_configuracion'))
             db.set_config(key, val)
         if 'empresa_logo' in request.files:
@@ -1075,16 +1124,16 @@ def admin_categoria_crear():
                 imagen = saved
     if len(slug) > MAX_LEN['slug'] or len(nombre) > MAX_LEN['nombre'] or \
        len(icono) > MAX_LEN['icono'] or len(descripcion) > MAX_LEN['descripcion']:
-        flash('Uno o m&aacute;s campos superan la longitud m&aacute;xima permitida', 'error')
+        flash('Uno o más campos superan la longitud máxima permitida', 'danger')
         return redirect(url_for('admin_categorias'))
     if not slug or not nombre:
-        flash('Slug y nombre son obligatorios', 'error')
+        flash('Slug y nombre son obligatorios', 'danger')
         return redirect(url_for('admin_categorias'))
     try:
         db.crear_categoria(slug, nombre, icono, descripcion, imagen)
         flash(f'Categoria "{nombre}" creada', 'success')
     except (sqlite3.IntegrityError, db_adapter.IntegrityError):
-        flash(f'El slug "{slug}" ya existe', 'error')
+        flash(f'El slug "{slug}" ya existe', 'danger')
     return redirect(url_for('admin_categorias'))
 
 @app.route('/admin/categoria/editar/<int:id>', methods=['POST'])
@@ -1608,7 +1657,7 @@ def api_guardar():
            len(proveedor or '') > MAX_LEN['proveedor'] or len(descripcion or '') > MAX_LEN['descripcion'] or \
            len(caracteristicas or '') > MAX_LEN['caracteristicas'] or len(especificaciones or '') > MAX_LEN['especificaciones'] or \
            len(garantia or '') > MAX_LEN['garantia'] or len(peso or '') > MAX_LEN['peso']:
-            flash('Uno o m&aacute;s campos superan la longitud m&aacute;xima permitida', 'error')
+            flash('Uno o más campos superan la longitud máxima permitida', 'danger')
             return redirect(url_for('admin_registro'))
         
         imagen = ''
@@ -1629,7 +1678,7 @@ def api_guardar():
         cursor.execute("SELECT id FROM repuestos WHERE codigo = ?", (codigo,))
         if cursor.fetchone():
             conn.close()
-            flash('Ya existe producto con ese código', 'error')
+            flash('Ya existe producto con ese código', 'danger')
             return redirect(url_for('admin_registro'))
         
         cursor.execute("INSERT INTO repuestos (codigo, nombre, categoria, cantidad, precio, stock_minimo, ubicacion, proveedor, imagen, descripcion, caracteristicas, especificaciones, garantia, peso, costo) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", 
@@ -1655,7 +1704,7 @@ def api_guardar():
         
     except Exception as e:
         app.logger.error(f"Error al registrar producto: {e}")
-        flash('Error al registrar producto', 'error')
+        flash('Error al registrar producto', 'danger')
         return redirect(url_for('admin_registro'))
 
 def guardar_imagen(file):
@@ -2351,27 +2400,27 @@ def registrar_usuario():
         rol = request.form.get('rol', 'usuario').strip() or 'usuario'
 
         if not username or not password or not nombre:
-            flash(' Todos los campos son obligatorios', 'error')
+            flash(' Todos los campos son obligatorios', 'danger')
             return redirect(url_for('registrar_usuario'))
 
         if len(username) > MAX_LEN['username'] or len(nombre) > MAX_LEN['nombre'] or \
            len(email) > MAX_LEN['email'] or len(password) > MAX_LEN['password']:
-            flash('Uno o m&aacute;s campos superan la longitud m&aacute;xima permitida', 'error')
+            flash('Uno o más campos superan la longitud máxima permitida', 'danger')
             return redirect(url_for('registrar_usuario'))
 
         if len(password) < 8:
-            flash(' La contraseña debe tener al menos 8 caracteres', 'error')
+            flash(' La contraseña debe tener al menos 8 caracteres', 'danger')
             return redirect(url_for('registrar_usuario'))
 
         if email and not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', email):
-            flash(' Correo electrónico inválido', 'error')
+            flash(' Correo electrónico inválido', 'danger')
             return redirect(url_for('registrar_usuario'))
 
         conn = get_db()
         cursor = conn.cursor()
         cursor.execute("SELECT id FROM usuarios WHERE username = ?", (username,))
         if cursor.fetchone():
-            flash(' El nombre de usuario ya existe', 'error')
+            flash(' El nombre de usuario ya existe', 'danger')
             conn.close()
             return redirect(url_for('registrar_usuario'))
 
@@ -2809,7 +2858,7 @@ def get_mantenimiento():
     try:
         with open(MANTENIMIENTO_FILE, 'r') as f:
             return f.read().strip() == '1'
-    except:
+    except Exception:
         return False
 
 def set_mantenimiento(activo):
@@ -2905,7 +2954,7 @@ def leer_ultimo_backup():
     try:
         with open(ULTIMO_BACKUP_FILE, 'r') as f:
             return float(f.read().strip())
-    except:
+    except Exception:
         return 0
 
 def escribir_ultimo_backup():
@@ -2943,7 +2992,7 @@ def backup_thread():
                     print(f"[BACKUP] Respaldo semanal (sábado)...")
                     crear_respaldo()
             threading.Event().wait(3600)  # Revisar cada hora
-        except:
+        except Exception:
             threading.Event().wait(3600)
 
 @app.route('/admin/respaldos')
@@ -2995,14 +3044,14 @@ def api_respaldos_descargar(filename):
     try:
         fpath = safe_join(BACKUP_DIR, filename)
         if not fpath or not os.path.exists(fpath):
-            flash('Archivo no encontrado', 'error')
+            flash('Archivo no encontrado', 'danger')
             return redirect(url_for('admin_respaldos'))
         return send_file(fpath, as_attachment=True, download_name=filename)
     except (ValueError, FileNotFoundError):
-        flash('Archivo no encontrado', 'error')
+        flash('Archivo no encontrado', 'danger')
         return redirect(url_for('admin_respaldos'))
     except Exception:
-        flash('Error al descargar el archivo', 'error')
+        flash('Error al descargar el archivo', 'danger')
         return redirect(url_for('admin_respaldos'))
 
 # ========== LOGS / ACTIVIDAD ==========
@@ -3031,7 +3080,7 @@ def log_request(response):
             path = request.path
             if method != 'GET':
                 db.log_actividad(session['user_id'], user, f'{method} {path}', '', ip)
-        except:
+        except Exception:
             pass
     return response
 
@@ -3053,14 +3102,14 @@ def admin_webhooks_crear():
     url = request.form.get('url', '').strip()
     evento = request.form.get('evento', '')
     if len(nombre) > MAX_LEN['webhook_nombre'] or len(url) > MAX_LEN['webhook_url']:
-        flash('Uno o m&aacute;s campos superan la longitud m&aacute;xima permitida', 'error')
+        flash('Uno o más campos superan la longitud máxima permitida', 'danger')
         return redirect(url_for('admin_webhooks'))
     if nombre and url and evento:
         db.crear_webhook(nombre, url, evento)
         db.log_actividad(session['user_id'], session.get('nombre'), 'Crear webhook', f'{nombre} -> {evento}', request.remote_addr)
         flash('Webhook creado', 'success')
     else:
-        flash('Completa todos los campos', 'error')
+        flash('Completa todos los campos', 'danger')
     return redirect(url_for('admin_webhooks'))
 
 @app.route('/admin/webhooks/eliminar/<int:id>', methods=['POST'])
@@ -3092,5 +3141,5 @@ hilo_backup.start()
 
 # ========== INICIO ==========
 if __name__ == '__main__':
-    debug_mode = os.environ.get('FLASK_DEBUG', '1') == '1'
+    debug_mode = os.environ.get('FLASK_DEBUG', '0') == '1'
     app.run(debug=debug_mode, port=5000)
