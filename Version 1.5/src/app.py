@@ -11,6 +11,8 @@ import random
 import secrets
 import logging
 logger = logging.getLogger(__name__)
+from dotenv import load_dotenv
+load_dotenv()
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import LinearRegression
@@ -153,10 +155,15 @@ def get_db():
 
 def init_db():
     if db_adapter.USING_PG:
-        from . import database_supabase as db_supabase
-        db_supabase.crear_tablas()
-    else:
-        db.crear_tablas()
+        try:
+            from . import database_supabase as db_supabase
+            db_supabase.crear_tablas()
+            logger.info("PostgreSQL conectado correctamente")
+            return
+        except Exception as e:
+            logger.warning(f"PostgreSQL no disponible, usando SQLite: {e}")
+            db_adapter.DATABASE_URL = ''
+    db.crear_tablas()
 
 # ========== DECORADORES ==========
 def login_required(f):
