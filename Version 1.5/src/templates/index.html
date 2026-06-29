@@ -489,7 +489,7 @@ async function cargarIndex() {
         var html = '';
         for (var i = 0; i < seleccionados.length; i++) {
             var p = seleccionados[i];
-            var img = p.imagen ? '/static/uploads/' + encodeURIComponent(p.imagen) : 'https://cdn-icons-png.flaticon.com/512/109/109869.png';
+            var img = p.imagen ? '/static/uploads/' + p.imagen.replace(/ /g, '%20') : 'https://cdn-icons-png.flaticon.com/512/109/109869.png';
             var esCritico = p.cantidad <= p.stock_minimo;
             var nombreEsc = escHtml(p.nombre);
             var codigoEsc = escHtml(p.codigo);

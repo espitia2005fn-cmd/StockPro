@@ -154,7 +154,7 @@ function mostrarProductos(productos) {
     for(var idx = 0; idx < productos.length; idx++) {
         var p = productos[idx];
         var esCritico = p.cantidad <= p.stock_minimo;
-        var imagenUrl = p.imagen ? '/static/uploads/' + encodeURIComponent(p.imagen) : 'https://cdn-icons-png.flaticon.com/512/109/109869.png';
+        var imagenUrl = p.imagen ? '/static/uploads/' + p.imagen.replace(/ /g, '%20') : 'https://cdn-icons-png.flaticon.com/512/109/109869.png';
         var nombreEsc = escHtml(p.nombre);
         var codigoEsc = escHtml(p.codigo);
         var nuevoTag = p.es_nuevo ? '<div class="new-ribbon">Nuevo</div>' : '';

@@ -62,6 +62,20 @@
 - **Solución**: Usar Transaction Pooler (puerto 6543) con `?pgbouncer=true`
 - **Nota**: El usuario debe actualizar `DATABASE_URL` en Railway Dashboard
 
+## Sesión 29/06/2026 — Escalabilidad, imágenes, hacking
+
+### B011: carrito.html renderiza imagen sin prefijo /static/uploads/
+- **Síntoma**: Productos agregados desde `producto_detalle.html` muestran imagen rota (404) cuando el campo `imagen` tiene ruta de subcarpeta (ej: `Lubricantes/prod_xxx.jpg`)
+- **Causa raíz**: `carrito.html:230` usa `item.imagen` directo sin anteponer `/static/uploads/`. `index.html` y `categoria.html` envían la URL completa, pero `producto_detalle.html` envía el valor crudo de la DB
+- **Solución**: Normalizar en `carrito.html`: si `item.imagen` no empieza con `/static/uploads/`, agregar el prefijo
+- **Archivo**: `carrito.html`
+
+### B012: encodeURIComponent rompe rutas con slash
+- **Síntoma**: En `index.html:492` y `categoria.html:157` se usa `encodeURIComponent(p.imagen)` que convierte `/` en `%2F`. Funciona en servidores locales pero no es estándar
+- **Causa raíz**: Codificar toda la ruta en vez de solo el nombre del archivo
+- **Solución**: Usar `/static/uploads/` + `encodeURIComponent` solo para el nombre base, o concatenar directamente (las subcarpetas no necesitan encoding)
+- **Archivo**: `index.html`, `categoria.html`
+
 ---
 
 ## Patrones de Fix Rápido

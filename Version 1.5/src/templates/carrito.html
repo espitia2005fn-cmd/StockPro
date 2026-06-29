@@ -227,7 +227,7 @@ function render() {
     for (const item of carrito) {
         if (item.stock_bajo) warn = true;
         subtotal += item.precio * item.cantidad;
-        const img = item.imagen || 'https://cdn-icons-png.flaticon.com/512/109/109869.png';
+        const img = item.imagen ? (item.imagen.startsWith('/static/') ? item.imagen : '/static/uploads/' + item.imagen) : 'https://cdn-icons-png.flaticon.com/512/109/109869.png';
         const nom = escHtml(item.nombre || '');
         const cat = escHtml(item.categoria || 'Producto');
         html += '<div class="cart-item">' +
