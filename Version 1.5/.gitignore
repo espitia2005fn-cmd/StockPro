@@ -11,6 +11,7 @@ check_db.py
 data/sesion_resumen.md
 data/mantenimiento.txt
 data/ultimo_backup.txt
+data/.last_image_cleanup
 node_modules/
 package.json
 package-lock.json

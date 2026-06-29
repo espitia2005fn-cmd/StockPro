@@ -61,6 +61,7 @@ def cleanup_orphan_images(app):
 
     for root, dirs, files in os.walk(uploads):
         dirs[:] = [d for d in dirs if not d.startswith('_')]
+        dirs[:] = [d for d in dirs if not d.startswith('.')]
         for f in files:
             if not f.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp')):
                 continue
@@ -72,11 +73,17 @@ def cleanup_orphan_images(app):
 
             # Duplicado: mismo nombre de archivo en subcarpeta referenciada
             f_lower = f.lower()
-            dup = any(
-                '/' in r and r.split('/')[-1].lower() == f_lower
-                for r in refs
-            )
-            if dup:
+            dup_ref = None
+            for r in refs:
+                if '/' in r and r.split('/')[-1].lower() == f_lower:
+                    dup_ref = r
+                    break
+            if dup_ref:
+                sub_path = os.path.join(uploads, dup_ref.replace('/', os.sep))
+                if not os.path.exists(sub_path):
+                    logger.info(f"[CLEANUP] SKIP (subdir copy missing): {rel} — ref {dup_ref} no existe en disco")
+                    kept += 1
+                    continue
                 try:
                     os.remove(os.path.join(root, f))
                     deleted += 1
