@@ -228,6 +228,7 @@ async function guardarEdicion() {
         const formData = new FormData();
         formData.append('imagen', imagenFile);
         formData.append('csrf_token', getCSRFToken());
+        formData.append('categoria', document.getElementById('edit_categoria').value);
         try {
             const uploadRes = await fetch('/api/subir_imagen', {
                 method: 'POST',

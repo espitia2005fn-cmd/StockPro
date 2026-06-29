@@ -1123,7 +1123,7 @@ def admin_categoria_crear():
     if 'imagen' in request.files:
         file = request.files['imagen']
         if file and file.filename:
-            saved = guardar_imagen(file)
+            saved = guardar_imagen(file, subdir=nombre)
             if saved:
                 imagen = saved
     if len(slug) > MAX_LEN['slug'] or len(nombre) > MAX_LEN['nombre'] or \
@@ -1153,7 +1153,7 @@ def admin_categoria_editar(id):
     if 'imagen' in request.files:
         file = request.files['imagen']
         if file and file.filename:
-            saved = guardar_imagen(file)
+            saved = guardar_imagen(file, subdir=nombre)
             if saved:
                 imagen = saved
     db.actualizar_categoria(id, slug, nombre, icono, descripcion, activo, imagen)
@@ -1668,13 +1668,16 @@ def api_guardar():
         if 'imagen' in request.files:
             file = request.files['imagen']
             if file and file.filename:
+                subdir = sanitizar_carpeta(categoria)
                 extension = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else 'jpg'
                 filename = f"prod_{int(datetime.now().timestamp())}.{extension}"
                 uploads_dir = os.path.join(app.root_path, 'Static', 'uploads')
+                if subdir:
+                    uploads_dir = os.path.join(uploads_dir, subdir)
                 os.makedirs(uploads_dir, exist_ok=True)
                 filepath = os.path.join(uploads_dir, filename)
                 file.save(filepath)
-                imagen = filename
+                imagen = f"{subdir}/{filename}" if subdir else filename
         
         conn = get_db()
         cursor = conn.cursor()
@@ -1711,12 +1714,23 @@ def api_guardar():
         flash('Error al registrar producto', 'danger')
         return redirect(url_for('admin_registro'))
 
-def guardar_imagen(file):
-    """Guarda un archivo de imagen en Static/uploads y devuelve el nombre."""
+def sanitizar_carpeta(nombre):
+    """Limpia un nombre de categoria para usarlo como subdirectorio."""
+    if not nombre:
+        return ''
+    safe = nombre.strip().replace('/', '-').replace('\\', '-')
+    safe = ''.join(c for c in safe if c.isalnum() or c in ' -_.,()[]')
+    return safe.strip()
+
+def guardar_imagen(file, subdir=''):
+    """Guarda un archivo de imagen en Static/uploads[/subdir] y devuelve el nombre."""
     extension = os.path.splitext(file.filename)[1].lower().lstrip('.')
     if extension not in ALLOWED_EXTENSIONS:
         return None
+    subdir = sanitizar_carpeta(subdir)
     uploads_dir = os.path.join(app.root_path, 'Static', 'uploads')
+    if subdir:
+        uploads_dir = os.path.join(uploads_dir, subdir)
     os.makedirs(uploads_dir, exist_ok=True)
     ext = os.path.splitext(secure_filename(file.filename))[1].lower()
     if ext == '':
@@ -1724,7 +1738,7 @@ def guardar_imagen(file):
     saved_name = f"cat_{int(datetime.now().timestamp())}_{random.randint(100,999)}{ext}"
     filepath = os.path.join(uploads_dir, saved_name)
     file.save(filepath)
-    return saved_name
+    return f"{subdir}/{saved_name}" if subdir else saved_name
 
 # ========== SUBIR IMAGEN ==========
 @app.route('/api/subir_imagen', methods=['POST'])
@@ -1750,7 +1764,11 @@ def api_subir_imagen():
         if filename == '':
             return jsonify({'success': False, 'error': 'Nombre de archivo inválido'})
 
+        categoria = request.form.get('categoria', '')
+        subdir = sanitizar_carpeta(categoria)
         uploads_dir = os.path.join(app.root_path, 'Static', 'uploads')
+        if subdir:
+            uploads_dir = os.path.join(uploads_dir, subdir)
         os.makedirs(uploads_dir, exist_ok=True)
 
         extension = os.path.splitext(filename)[1].lower()
@@ -1760,7 +1778,8 @@ def api_subir_imagen():
         filepath = os.path.join(uploads_dir, saved_name)
         file.save(filepath)
 
-        return jsonify({'success': True, 'filename': saved_name})
+        result_name = f"{subdir}/{saved_name}" if subdir else saved_name
+        return jsonify({'success': True, 'filename': result_name})
     except Exception as e:
         app.logger.error(f"Error en /api/guardar imagen: {e}")
         return jsonify({'success': False, 'error': 'Error al guardar la imagen'}), 500
@@ -3142,6 +3161,13 @@ os.makedirs(BACKUP_DIR, exist_ok=True)
 # Iniciar hilo de respaldos automaticos
 hilo_backup = threading.Thread(target=backup_thread, daemon=True)
 hilo_backup.start()
+
+# Limpieza automatica de imagenes huerfanas (cada 24h)
+from .cleanup_images import cleanup_orphan_images
+try:
+    cleanup_orphan_images(app)
+except Exception as e:
+    logger.warning(f"[CLEANUP] Error en limpieza automatica: {e}")
 
 # ========== INICIO ==========
 if __name__ == '__main__':

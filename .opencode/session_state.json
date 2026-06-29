@@ -1,0 +1,22 @@
+{
+  "last_session": "2026-06-25T20:45:00",
+  "phase": "public_redesign_complete",
+  "done": [
+    "Grid de categorias en index.html: cards con imagen de fondo + icono SVG + nombre + descripcion, hover 3D, 4 cols",
+    "CSS cards modernas movido a Style.css (product-card-modern, prod-*, product-img-wrap, btn-prod*)",
+    "Bug fecha_reg float corregido en api_inventario y api_inventario_por_categoria",
+    "Fixed categoria.html cards rotas (ahora usan CSS desde Style.css)",
+    "Carrito badge animado: rebote al agregar items (clase .animate con keyframes)",
+    "WhatsApp button redisenado: escudo oscuro con borde gradient rojo-verde, tooltip 'Ayuda'",
+    "Login formal: borde izquierdo rojo, inputs mas elegantes, captcha en caja, divider",
+    "User avatar: iniciales en circulo rojo, dropdown formal con iconos",
+    "Nav dropdown categorias con iconos SVG por categoria",
+    "Fuente Outfit unificada, Bootstrap Icons 1.11.1, favicon en todos",
+    "7/7 tests pasan, servidor verificado en todas las paginas",
+    "22 rutas Big Data / Analytics con ECharts 5.5.0"
+  ],
+  "in_progress": [],
+  "blocked": [
+    "Supabase: requiere credenciales del usuario"
+  ]
+}
