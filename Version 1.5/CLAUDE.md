@@ -163,6 +163,30 @@ Version 1.5/
 - `http://192.168.0.5:5000` (local: `http://localhost:5000`)
 - `--reload` activo
 
+### Sesion 28/06/2026 — Seguridad + Supabase + Imagenes (OVERHAUL v3)
+- **CSP nonces**: `g.csp_nonce` via `before_request`, quitado `unsafe-inline` de script-src
+- **XSS**: `escHtml()` en 5 bases, innerHTML reemplazado por textContent
+- **Account lockout**: 5 intentos fallidos → 15 min bloqueo
+- **Bare except fijos**: 8 bloques `except:` → `except Exception:` + logging
+- **init_db() fallback**: PostgreSQL falla → SQLite, no crash
+- **CAPTCHA**: siempre genera numeros, flag solo controla validacion
+- **Railway live**: `stockpro-production-e2ee.up.railway.app`
+- **Supabase**: Transaction Pooler puerto 6543 (IPv4) con ?pgbouncer=true
+- **Gunicorn + .env**: `load_dotenv()` en app.py (gunicorn no usa run.py)
+- **BUG_MEMORY.md** creado en `.opencode/` con 10 bugs documentados
+- **Nuevos scripts**:
+  - `scripts/seed_supabase.py` — seed 63 prod, 6 usuarios, 19 pedidos para PostgreSQL
+  - `scripts/organize_images.py` — copia imagenes a `uploads/Categoria/` y actualiza DB
+
+### Issues Conocidos ACTUALIZADOS:
+- ~~CSP con 'unsafe-inline' debilita proteccion XSS~~ → RESUELTO (nonces)
+- ~~Bloqueo de cuenta por intentos fallidos NO implementado~~ → RESUELTO (5 intentos, 15 min)
+- ~~Sin error handlers 404/500~~ → PENDIENTE
+- ~~CORS default '*'~~ → PENDIENTE (usar CORS_ORIGINS)
+- database.py y database_supabase.py duplicados (~80%)
+- Connection pooling PostgreSQL no implementado
+- app.py sigue siendo monolito (3000+ lineas)
+
 ### Configuracion
 - `C:\Users\Juan Espi\.config\opencode\opencode.json` - config principal
 - `C:\Users\Juan Espi\.config\opencode\commands\mobile.md` - comando /mobile
@@ -194,6 +218,8 @@ Version 1.5/
 - `/mobile` - Genera QR para conectar iPhone con OpenLens
 - `npx opencode-mobile qr <file>` - QR desde terminal
 - Server: `cd "Version 1.5"; flask run --host=0.0.0.0 --port=5000 --reload`
-- Seed: `cd "Version 1.5"; python scripts/seed_reales.py`
+- Seed SQLite: `cd "Version 1.5"; python scripts/seed_reales.py`
+- Seed PostgreSQL: `cd "Version 1.5"; python scripts/seed_supabase.py` (requiere DATABASE_URL)
+- Organizar imagenes: `cd "Version 1.5"; python scripts/organize_images.py`
 - Tests: `cd "Version 1.5"; pytest`
 - Cloudflared tunnel: `npx cloudflared tunnel --url http://localhost:5000`
